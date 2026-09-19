@@ -116,9 +116,16 @@ public partial class MainForm {
         busy=true;int stamp=++generation;stopRequested=false;
         try{
             await RefreshSnapshot(true);if(snap.Busy(false)||snap.Full(cfg.FullPercent)){Notice("게임이 다른 행동 중이거나 가방 한도에 도달했습니다.");return;}
+            var requestedFacilities=new HashSet<string>(manualQueue.Where(x=>x.Target>0).Select(x=>x.Facility??Facilities.ForRecipe(cfg,x.Name)));
+            var collectFirst=snap.Works.Where(x=>J.B(x,"IsCompleted")&&requestedFacilities.Contains(J.S(x,"FacilityName"))).GroupBy(x=>J.S(x,"FacilityName")).Select(x=>x.First()).ToList();
+            foreach(var completed in collectFirst){
+                if(generation!=stamp||stopRequested||snap.Full(cfg.FullPercent))return;
+                if(!await RunPlan(new Plan("complete_altering_work",J.S(completed,"DisplayName"),"수동 등록 전 완료품 자동 수령",0),stamp))return;
+            }
+            if(generation!=stamp||stopRequested||snap.Full(cfg.FullPercent))return;
             var available=Facilities.Names.ToDictionary(x=>x,x=>Facilities.Free(snap,cfg,x));var run=new List<Goal>();
             foreach(var original in manualQueue){string facility=original.Facility??Facilities.ForRecipe(cfg,original.Name);int free;available.TryGetValue(facility,out free);int count=Math.Min(original.Target,free);if(count>0){run.Add(new Goal{Name=original.Name,Facility=facility,Target=count});available[facility]=free-count;}}
-            int total=run.Sum(x=>x.Target);if(total==0){Notice("현재 빈 슬롯이 없습니다. 완료 가공물을 수령하거나 슬롯 설정을 확인하세요.");return;}
+            int total=run.Sum(x=>x.Target);if(total==0){Notice("완료품 수령 후에도 빈 슬롯이 없습니다. 진행 작업과 시설별 슬롯 설정을 확인하세요.");return;}
             manualQueue=run;RenderManual();
             foreach(var q in run.ToList()){
                 while(q.Target>0){
@@ -139,7 +146,7 @@ public partial class MainForm {
         closing=true;auto=false;generation++;timer.Stop();tray.Visible=false;tray.Dispose();foreach(var im in iconCache.Values)im.Dispose();Save();
     }
     public async Task RenderPreview(string dir){
-        Directory.CreateDirectory(dir);string fixture=Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_FIXTURE");if(demo&&!String.IsNullOrEmpty(fixture)&&File.Exists(fixture)){var db=(DemoBridge)bridge;db.Works=J.Rows(J.Get(J.Parse(File.ReadAllText(fixture,Encoding.UTF8)),"works"));}await Poll(true);for(int i=0;i<tabs.TabPages.Count;i++){tabs.SelectedIndex=i;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(Path.Combine(dir,"screen-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}}
+        Directory.CreateDirectory(dir);int previewScale;if(Int32.TryParse(Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_SCALE"),out previewScale)&&UiSizing.Options.Contains(previewScale))displayScaleCombo.SelectedItem=previewScale+"%";string fixture=Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_FIXTURE");if(demo&&!String.IsNullOrEmpty(fixture)&&File.Exists(fixture)){var db=(DemoBridge)bridge;db.Works=J.Rows(J.Get(J.Parse(File.ReadAllText(fixture,Encoding.UTF8)),"works"));}await Poll(true);for(int i=0;i<tabs.TabPages.Count;i++){tabs.SelectedIndex=i;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(Path.Combine(dir,"screen-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}}
         int dialogIndex=0;using(var capture=new Timer{Interval=250}){capture.Tick+=(s,e)=>{var dialog=Application.OpenForms.OfType<EditDialog>().FirstOrDefault();if(dialog==null)return;using(var bmp=new Bitmap(dialog.Width,dialog.Height)){dialog.DrawToBitmap(bmp,new Rectangle(0,0,dialog.Width,dialog.Height));bmp.Save(Path.Combine(dir,"dialog-"+dialogIndex+".png"),System.Drawing.Imaging.ImageFormat.Png);}dialog.DialogResult=DialogResult.Cancel;};capture.Start();EditGoal(null);dialogIndex++;EditStock(null);dialogIndex++;SaveLandmark();dialogIndex++;EditRoute(null);dialogIndex++;EditRoutePoint(new RoutePreset{Material="통나무"},-1);capture.Stop();}
 
     }
@@ -155,7 +162,14 @@ public partial class MainForm {
         int manualRegistrations=db.Calls.Count(x=>x=="execute_altering");success=success&&manualRegistrations==2&&db.Works.Count==4&&manualQueue.Count==0&&fishCombo.Items.Cast<object>().All(x=>FishNames.IsFish(Convert.ToString(x)));
         int manualUsedSlots=db.Works.Count;db.Works.Clear();db.Counts["통나무"]=200;cfg.Goals.Add(new Goal{Name="목재",Mode="runs",Target=12});cfg.FacilitySlots["목재 가공 시설"]=20;db.Calls.Clear();await Poll(true);StartAutomation();await Poll();
         int unlimitedByBudget=db.Calls.Count(x=>x=="execute_altering");success=success&&unlimitedByBudget==12;Pause("횟수 제한 제거 검증 종료");
-        return J.Obj("registrationsBeyondOldLimit",unlimitedByBudget,"passed",success,"collections",collections,"autoRegistrations",registrations,"manualRegistrations",manualRegistrations,"manualUsedSlots",manualUsedSlots,"manualQueueEmpty",manualQueue.Count==0,"visibleFacilities",facilityGrid.Rows.Count,"fishOptions",fishCombo.Items.Count,"dialogs",0);
+        cfg.Goals.Clear();db.Works.Clear();cfg.FacilitySlots["목재 가공 시설"]=7;
+        for(int i=0;i<5;i++)db.Works.Add(J.Obj("DisplayName","목재","FacilityName","목재 가공 시설","IsCompleted",true,"RemainingSeconds",0));
+        db.Works.Add(J.Obj("DisplayName","목재","FacilityName","목재 가공 시설","IsCompleted",false,"RemainingSeconds",100));
+        await Poll(true);int reservable=Facilities.ManualAvailable(snap,cfg,"목재 가공 시설",0);manualQueue.Add(new Goal{Name="목재",Facility="목재 가공 시설",Target=reservable});db.Calls.Clear();await ManualRegister();
+        int collectBeforeRegister=db.Calls.IndexOf("complete_altering_work"),firstRegister=db.Calls.IndexOf("execute_altering");int afterCollectRegistrations=db.Calls.Count(x=>x=="execute_altering");
+        bool collectedFirst=reservable==6&&collectBeforeRegister>=0&&firstRegister>collectBeforeRegister&&afterCollectRegistrations==6&&db.Works.Count==7;success=success&&collectedFirst;
+        db.Works.Clear();db.Works.Add(J.Obj("DisplayName","목재","FacilityName","목재 가공 시설","IsCompleted",true,"RemainingSeconds",0));manualQueue.Add(new Goal{Name="목재",Facility="목재 가공 시설",Target=6});db.RejectCollection=true;db.Calls.Clear();await ManualRegister();bool stoppedOnCollectionFailure=!db.Calls.Contains("execute_altering")&&manualQueue.Count==1;success=success&&stoppedOnCollectionFailure;db.RejectCollection=false;manualQueue.Clear();
+        return J.Obj("manualCollectThenRegister",collectedFirst,"stoppedOnCollectionFailure",stoppedOnCollectionFailure,"registrationsBeyondOldLimit",unlimitedByBudget,"passed",success,"collections",collections,"autoRegistrations",registrations,"manualRegistrations",manualRegistrations,"manualUsedSlots",manualUsedSlots,"manualQueueEmpty",manualQueue.Count==0,"visibleFacilities",facilityGrid.Rows.Count,"fishOptions",fishCombo.Items.Count,"dialogs",0);
     }
     public void SaveLivePreview(string path){tabs.SelectedIndex=0;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);}}
     public async Task<object> LiveCheck(){await Poll(true);return J.Obj("connected",connected,"recipes",snap.Recipes.Count,"items",snap.Items.Count,"works",snap.Works.Count,"gatherables",snap.Gatherables.Count,"area",J.S(snap.Environment,"GameSpaceDisplayName"),"activity",ActivityText(),"auto",auto);}

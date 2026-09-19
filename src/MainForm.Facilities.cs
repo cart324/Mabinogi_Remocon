@@ -36,10 +36,10 @@ public partial class MainForm {
     void AddManual(){
         if(!CanEdit())return;string recipe=Selected<string>(recipeGrid),facility=CurrentManualFacility();if(recipe==null){Notice("시설과 가공법을 선택하세요.");return;}
         int reserved=manualQueue.Where(x=>(x.Facility??Facilities.ForRecipe(cfg,x.Name))==facility).Sum(x=>x.Target);
-        int free=Math.Max(0,Facilities.Free(snap,cfg,facility)-reserved);if(free==0){Notice("선택 시설의 빈 슬롯이 없거나 모두 예약되어 있습니다. 완료 가공물을 수령하거나 슬롯 설정을 확인하세요.");return;}
-        using(var d=new EditDialog(facility+" · 1회성 가공 등록")){d.Height=340;var count=Number(free,free);count.Minimum=1;d.Add(recipe+" · 현재 예약 가능한 빈 슬롯 "+free+"칸",count);d.Hint("기본값은 빈 슬롯 전체입니다. 실행 시 최신 빈 슬롯 수로 다시 제한하며 이번에만 등록합니다. 자동 재등록과 하위 재료 보충은 하지 않습니다.");if(d.ShowDialog(this)!=DialogResult.OK)return;cfg.RecipeFacilities[recipe]=facility;manualQueue.Add(new Goal{Name=recipe,Facility=facility,Target=(int)count.Value});Save();RenderManual();RenderManualInfo();}
+        int free=Facilities.ManualAvailable(snap,cfg,facility,reserved);if(free==0){Notice("완료품 수령 후에도 예약 가능한 슬롯이 없거나 모두 예약되어 있습니다. 진행 작업이나 예약 목록을 확인하세요.");return;}
+        using(var d=new EditDialog(facility+" · 1회성 가공 등록")){d.Height=340;var count=Number(free,free);count.Minimum=1;d.Add(recipe+" · 수령 후 예약 가능한 슬롯 "+free+"칸",count);d.Hint("완료된 작업은 슬롯 계산에서 제외합니다. 실행 시 완료품을 먼저 수령한 뒤 실제 빈 슬롯에 한 번만 등록합니다. 자동 재등록과 하위 재료 보충은 하지 않습니다.");if(d.ShowDialog(this)!=DialogResult.OK)return;cfg.RecipeFacilities[recipe]=facility;manualQueue.Add(new Goal{Name=recipe,Facility=facility,Target=(int)count.Value});Save();RenderManual();RenderManualInfo();}
     }
-    void RenderManualInfo(){if(manualInfoLabel==null)return;string f=CurrentManualFacility();manualInfoLabel.Text="전체 "+Facilities.Total(cfg,f)+" · 사용 "+Facilities.Used(snap,f)+" · 빈 슬롯 "+Facilities.Free(snap,cfg,f);}
+    void RenderManualInfo(){if(manualInfoLabel==null)return;string f=CurrentManualFacility();int reserved=manualQueue.Where(x=>(x.Facility??Facilities.ForRecipe(cfg,x.Name))==f).Sum(x=>x.Target);manualInfoLabel.Text="전체 "+Facilities.Total(cfg,f)+" · 진행·대기 "+snap.Works.Count(x=>J.S(x,"FacilityName")==f&&!J.B(x,"IsCompleted"))+" · 수령 후 예약 가능 "+Facilities.ManualAvailable(snap,cfg,f,reserved);}
     void RenderFacilities(){
         foreach(var w in snap.Works){string name=J.S(w,"FacilityName");if(name!=""&&!facilityNames.Contains(name))facilityNames.Add(name);}
         while(facilityGrid.Rows.Count<facilityNames.Count){int i=facilityGrid.Rows.Count;facilityGrid.Rows.Add(facilityNames[i],Facilities.Total(cfg,facilityNames[i]),"—","—","—","—","—","조회 대기");facilityGrid.Rows[i].Tag=facilityNames[i];}

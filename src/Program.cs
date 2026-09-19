@@ -14,13 +14,14 @@ public static class Program {
         if(args.Contains("--self-test")){string result;int code=SelfTests.Run(out result);File.WriteAllText(args.Length>1?args[1]:"test-results.txt",result,Encoding.UTF8);return code;}
         Application.EnableVisualStyles();Application.SetCompatibleTextRenderingDefault(false);
         Application.ThreadException+=(s,e)=>MessageBox.Show("프로그램 오류: "+e.Exception.Message,"에린 리모컨");
-        bool demo=args.Contains("--automation-check")||args.Contains("--demo")||args.Contains("--render-preview");bool preview=args.Contains("--automation-check")||args.Contains("--render-preview")||args.Contains("--live-check");
+        bool demo=args.Contains("--ui-scale-check")||args.Contains("--automation-check")||args.Contains("--demo")||args.Contains("--render-preview");bool preview=args.Contains("--ui-scale-check")||args.Contains("--automation-check")||args.Contains("--render-preview")||args.Contains("--live-check");
         using(var mutex=new System.Threading.Mutex(false,"Local\\MabiRemote.SingleInstance")){
             bool held=preview||demo||mutex.WaitOne(0);if(!held){MessageBox.Show("에린 리모컨이 이미 실행 중입니다. 작업 표시줄에서 기존 창을 여세요.");return 1;}
             var f=new MainForm(demo,preview);
             if(args.Contains("--render-preview"))f.Shown+=async(s,e)=>{try{await f.RenderPreview(args.Length>1?args[1]:"preview");}catch(Exception ex){File.WriteAllText("render-error.txt",ex.ToString());}finally{f.Close();}};
             if(args.Contains("--live-check"))f.Shown+=async(s,e)=>{try{var r=await f.LiveCheck();f.SaveLivePreview(args[1]+".png");File.WriteAllText(args.Length>1?args[1]:"live-check.json",J.Json(r),Encoding.UTF8);}finally{f.Close();}};
             if(args.Contains("--automation-check"))f.Shown+=async(s,e)=>{try{var r=await f.CheckActionFlow();File.WriteAllText(args[1],J.Json(r),Encoding.UTF8);}finally{f.Close();}};
+            if(args.Contains("--ui-scale-check"))f.Shown+=(s,e)=>{try{File.WriteAllText(System.IO.Path.Combine(args[1],"result.json"),J.Json(f.CheckUiScale(args[1])),Encoding.UTF8);}finally{f.Close();}};
             Application.Run(f);if(!preview&&!demo)mutex.ReleaseMutex();
         }
         return 0;
@@ -75,6 +76,8 @@ public static class SelfTests {
         Check("채집 완료·중단·낚시 시작 상태 구분",()=>{Assert(GatherResult.Describe("통나무",J.Obj("result","completed","gained",100)).StartsWith("채집 완료"),"completed");Assert(GatherResult.Describe("통나무",J.Obj("result","stopped","gained",5)).StartsWith("채집 중단"),"stopped");Assert(GatherResult.Describe("연어",J.Obj("result","started")).StartsWith("자동 낚시 진행 중"),"fishing");});
         Check("게임 오류 한글 알림과 원문 기록 분리",()=>{foreach(var code in new[]{"not_enough_currency","tool_broken","blocked","not_enough_ingredient","no_route","future_error"}){try{new Reply{ExitCode=0,Data=J.Obj("status","rejected","body",J.Obj("error",code,"message","English technical response"))}.Check();Assert(false,"should fail");}catch(GameCommandException ex){string message=FriendlyText.Error(ex);Assert(!message.Contains(code)&&!message.Contains("English")&&System.Text.RegularExpressions.Regex.IsMatch(message,"[가-힣]"),"Korean message");Assert(ex.Message.Contains(code),"details retained");}}Assert(FriendlyText.Reply(J.Obj("reason","option_off"),5).Contains("커넥터"),"connection reason");Assert(FriendlyText.Dungeon("Cleared")=="완료","dungeon status");});
         Check("이전 날개 한도 설정은 무시하고 기존 설정 유지",()=>{var loaded=J.Serializer().Deserialize<Settings>("{\"Budget\":0,\"FullPercent\":90}");Assert(loaded.FullPercent==90&&!J.Json(loaded).Contains("Budget"),"legacy setting ignored");var s=BatchSample();s.Items.Add(Item("통나무",100));loaded.Goals.Add(new Goal{Name="목재",Mode="runs",Target=1});Assert(BatchNext(s,loaded)!=null,"old zero limit does not block");});
+        Check("수동 예약은 완료 작업을 제외하고 기존 예약 차감",()=>{var s=Sample();var c=new Settings();for(int i=0;i<5;i++)s.Works.Add(Work("목재",true));s.Works.Add(Work("목재",false));Assert(Facilities.Free(s,c,"목재 가공 시설")==1,"actual free slots");Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",0)==6,"five done plus one unfinished leaves six");Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",2)==4,"existing reservations");c.FacilitySlots["목재 가공 시설"]=0;Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",0)==0,"zero capacity");});
+        Check("UI 배율 저장과 이전 설정 기본값",()=>{var c=new Settings{UiScale=80};Assert(J.Serializer().Deserialize<Settings>(J.Json(c)).UiScale==80,"persist");Assert(J.Serializer().Deserialize<Settings>("{}").UiScale==100,"legacy default");});
         report=String.Join(Environment.NewLine,results)+Environment.NewLine+"TOTAL "+results.Count+" / FAILED "+failed;return failed==0?0:1;
     }
 }

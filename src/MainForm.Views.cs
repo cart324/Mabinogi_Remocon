@@ -7,6 +7,9 @@ using System.Windows.Forms;
 
 namespace MabiRemote {
 public class EditDialog : Form {
+    UiScaleState displayScale;
+    protected override void OnLoad(EventArgs e){base.OnLoad(e);displayScale=new UiScaleState(this);displayScale.Apply(UiSizing.Percent);}
+    protected override void OnFormClosed(FormClosedEventArgs e){base.OnFormClosed(e);if(displayScale!=null)displayScale.Dispose();}
     public FlowLayoutPanel Content; public Button OK;
     public EditDialog(string title){Text=title;Width=590;Height=560;MinimumSize=new Size(550,450);StartPosition=FormStartPosition.CenterParent;Font=new Font("맑은 고딕",10);BackColor=Color.FromArgb(243,247,247);Content=new FlowLayoutPanel{Dock=DockStyle.Fill,FlowDirection=FlowDirection.TopDown,WrapContents=false,AutoScroll=true,Padding=new Padding(18)};Controls.Add(Content);var buttons=new FlowLayoutPanel{Dock=DockStyle.Bottom,Height=55,FlowDirection=FlowDirection.RightToLeft,Padding=new Padding(8)};OK=new Button{Text="저장",DialogResult=DialogResult.OK,Width=100,Height=33};var cancel=new Button{Text="취소",DialogResult=DialogResult.Cancel,Width=100,Height=33};buttons.Controls.Add(OK);buttons.Controls.Add(cancel);Controls.Add(buttons);AcceptButton=OK;CancelButton=cancel;}
     public void Add(string label,Control c){Content.Controls.Add(new Label{Text=label,AutoSize=true,Margin=new Padding(0,8,0,4)});Content.Controls.Add(c);}
