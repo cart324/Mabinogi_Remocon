@@ -71,6 +71,21 @@ public static class Facilities {
     public static int Used(Snapshot s,string name){return s.Works.Count(x=>J.S(x,"FacilityName")==name);}
     public static int Free(Snapshot s,Settings cfg,string name){return Math.Max(0,Total(cfg,name)-Used(s,name));}
 }
+public sealed class FacilityTiming {
+    public double? NextSeconds, FinalSeconds;
+    static double? Seconds(object work){double value;return Double.TryParse(J.S(work,"RemainingSeconds"),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out value)&&!Double.IsNaN(value)&&!Double.IsInfinity(value)&&value>=0?(double?)value:null;}
+    public static FacilityTiming Calculate(IEnumerable<object> works,double elapsed){
+        var active=works.Where(x=>!J.B(x,"IsCompleted")).ToList();var result=new FacilityTiming();if(active.Count==0)return result;
+        var running=active.FirstOrDefault(x=>J.S(x,"State")=="InProgress");
+        double age=running==null?0:Math.Max(0,elapsed);
+        var next=Seconds(running??active[0]);if(next.HasValue)result.NextSeconds=Math.Max(0,next.Value-age);
+        var durations=active.Select(Seconds).ToList();
+        // One facility runs a serial queue. NotStarted seconds are full job durations.
+        // Only one job advances at a time, so subtract elapsed time once from the sum.
+        if(durations.All(x=>x.HasValue))result.FinalSeconds=Math.Max(0,durations.Sum(x=>x.Value)-age);
+        return result;
+    }
+}
 public static class FishNames {
     static readonly HashSet<string> Fish=new HashSet<string>{"황금 잉어","은붕어","브리흐네 잉어","참사랑어","작은 자루퍼","잡어","은어","무지개 송어","자루퍼","황금 송어","금린어","황금 연어","고등어","연어","초롱아귀","황금 메기","메기","어둠유령고기","큰 자루퍼","황금 농어","농어"};
     public static bool IsFish(string name){return Fish.Contains(name);}

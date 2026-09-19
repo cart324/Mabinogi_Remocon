@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Drawing;
@@ -46,8 +46,9 @@ public partial class MainForm {
         double elapsed=Math.Max(0,(DateTime.UtcNow-snap.At).TotalSeconds);
         for(int i=0;i<facilityNames.Count;i++){
             string name=facilityNames[i];var group=snap.Works.Where(x=>J.S(x,"FacilityName")==name).ToList();var active=group.Where(x=>!J.B(x,"IsCompleted")).ToList();
-            var known=active.Where(x=>J.N(x,"RemainingSeconds")>0).Select(x=>Math.Max(0,J.N(x,"RemainingSeconds")-elapsed)).ToList();
-            string next=active.Count==0?"—":known.Count==0?"시간 미제공":Duration(known.Min());string last=active.Count==0?"—":known.Count==0?"시간 미제공":Duration(known.Max())+(known.Count<active.Count?" + 대기":"");
+            var timing=FacilityTiming.Calculate(group,elapsed);
+            string next=active.Count==0?"—":timing.NextSeconds.HasValue?Duration(timing.NextSeconds.Value):"시간 미제공";
+            string last=active.Count==0?"—":timing.FinalSeconds.HasValue?Duration(timing.FinalSeconds.Value):"시간 미제공";
             object[] values={name,Facilities.Total(cfg,name),snap.At==DateTime.MinValue?"—":Facilities.Free(snap,cfg,name).ToString(),snap.At==DateTime.MinValue?"—":group.Count(x=>J.B(x,"IsCompleted")).ToString(),snap.At==DateTime.MinValue?"—":active.Count.ToString(),next,last,snap.At==DateTime.MinValue?"조회 대기":group.Count==0?"작업 없음":String.Join(", ",group.GroupBy(x=>J.S(x,"DisplayName")).Select(x=>x.Key+" ×"+x.Count()))};
             for(int c=0;c<values.Length;c++)if(!Object.Equals(facilityGrid.Rows[i].Cells[c].Value,values[c]))facilityGrid.Rows[i].Cells[c].Value=values[c];
             facilityGrid.Rows[i].DefaultCellStyle.ForeColor=group.Count>Facilities.Total(cfg,name)?Color.Firebrick:Ink;
