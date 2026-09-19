@@ -1,0 +1,12 @@
+/dist/
+/work/
+*.user
+*.suo
+*.log
+settings.json
+settings.json.bak
+.env
+.env.*
+*.pfx
+*.key
+__pycache__/

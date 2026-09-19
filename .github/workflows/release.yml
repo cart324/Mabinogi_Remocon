@@ -1,0 +1,35 @@
+name: Build and release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and test
+        shell: powershell
+        run: ./test.ps1
+      - name: Prepare release
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = [Diagnostics.FileVersionInfo]::GetVersionInfo("$pwd/dist/ErinRemote.exe").FileVersion
+          $tag = 'v' + ([Version]$version).ToString(3)
+          if ($env:GITHUB_REF -ne "refs/tags/$tag") { throw "Run this workflow on matching version tag $tag." }
+          $hash = (Get-FileHash ./dist/ErinRemote.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          [IO.File]::WriteAllText("$pwd/dist/SHA256SUMS.txt", "$hash  ErinRemote.exe`n", (New-Object Text.UTF8Encoding($false)))
+          git archive --format=zip --output=dist/ErinRemote-source.zip HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed.' }
+      - name: Publish release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = $env:GITHUB_REF_NAME
+          gh release create $tag ./dist/ErinRemote.exe ./dist/SHA256SUMS.txt ./dist/ErinRemote-source.zip --verify-tag --title "에린 리모컨 $tag" --notes-file RELEASE_NOTES.md
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed. Existing releases are never overwritten.' }
