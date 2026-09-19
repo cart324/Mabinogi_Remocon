@@ -40,6 +40,9 @@ public class Goal {
 public class StockGoal { public string Name{get;set;} public int Target{get;set;} public bool Gather{get;set;} public StockGoal(){Target=100;Gather=true;} }
 public class Landmark { public string Name{get;set;} public string Area{get;set;} public double X{get;set;} public double Y{get;set;} public string Kind{get;set;} }
 public class Settings {
+    public List<RecipeDefinition> RecipeDefinitions{get;set;}
+    public List<RoutePreset> Routes{get;set;}
+    public Dictionary<string,string> MaterialRoutes{get;set;}
     public bool AutoCheckUpdates{get;set;}
     public bool ArrivalNotifications{get;set;}
     public bool DungeonNotifications{get;set;}
@@ -54,7 +57,7 @@ public class Settings {
     public string FishName{get;set;}
     public Dictionary<string,int> FacilitySlots{get;set;}
     public Dictionary<string,string> RecipeFacilities{get;set;}
-    public Settings(){AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();Budget=50;FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
+    public Settings(){RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();Budget=50;FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
 }
 public static class Facilities {
     public static readonly string[] Names={"금속 가공 시설","목재 가공 시설","옷감 가공 시설","가죽 가공 시설","약품 가공 시설","식재료 가공 시설"};
@@ -94,7 +97,7 @@ public static class Storage {
     public static string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"MabiRemote");
     public static string LastLoadWarning="";
     public static void Save(Settings s){ Directory.CreateDirectory(Root); string file=Path.Combine(Root,"settings.json"), temp=file+".tmp"; File.WriteAllText(temp,J.Json(s),new UTF8Encoding(false)); if(File.Exists(file))File.Replace(temp,file,file+".bak");else File.Move(temp,file); }
-    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();s.Budget=Math.Max(0,Math.Min(10000,s.Budget));s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
+    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.RecipeDefinitions==null)s.RecipeDefinitions=RecipeBook.Defaults();if(s.Routes==null)s.Routes=new List<RoutePreset>();if(s.MaterialRoutes==null)s.MaterialRoutes=new Dictionary<string,string>();if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();s.Budget=Math.Max(0,Math.Min(10000,s.Budget));s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
 }
 public static class ConnectionStatus {
     public static string Disconnected(object status){switch(J.S(status,"reason")){
@@ -146,27 +149,30 @@ public class Snapshot {
         return J.B(Section("autoPlay"),"IsAutoPlaying")||J.B(Section("autoTravel"),"IsAutoTraveling")||J.S(mode,"MainButtonState")=="Stop";
     }
 }
-public class Plan {public string Command,Name,Reason; public Goal Goal; public int Cost; public Action Completed; public Plan(string c,string n,string r,int cost){Command=c;Name=n;Reason=r;Cost=cost;} }
+public class Plan {public string Command,Name,Reason; public Goal Goal; public int Cost; public int GatherTarget; public Action Completed; public Plan(string c,string n,string r,int cost){Command=c;Name=n;Reason=r;Cost=cost;} }
 public static class Planner {
     public static string Product(string name){return System.Text.RegularExpressions.Regex.Replace(name??"",@"\([^()]*\)$","").Trim();}
     public static string Product(Goal g){return String.IsNullOrEmpty(g.Product)?Product(g.Name):g.Product;}
-    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int maxQueue, Func<string,bool> ready, HashSet<string> visited){
+    public static int BatchRuns(Snapshot s,Settings cfg,Goal goal){
+        var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==goal.Name);if(r==null||J.N(r,"ProducedPerWork")<=0)return 0;
+        int slots=RecipeBook.BatchSlots(s,cfg,goal.Name);double needed=goal.Mode=="unlimited"?slots:goal.Mode=="runs"?Math.Max(0,goal.Target-goal.RunsDone):Math.Ceiling(Math.Max(0,goal.Target-s.Count(Product(goal),cfg.CountStorage)-RecipeBook.Pending(s,cfg,Product(goal)))/J.N(r,"ProducedPerWork"));
+        return (int)Math.Min(slots,needed);
+    }
+    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int requested, Func<string,bool> ready, HashSet<string> visited){
         if(!visited.Add(name)||visited.Count>16)return null;
-        if(Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,name))<=0)return null;
-        var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==name); if(r==null)return null;
-        int pending=s.Works.Count(x=>J.S(x,"DisplayName")==product || J.S(x,"DisplayName")==name);
-        if(pending>=maxQueue)return null;
-        if(J.B(r,"Alterable"))return ready("execute_altering:"+name)?new Plan("execute_altering",name,"가공 등록 (완제품: "+product+")",5):null;
-        if(J.S(r,"Reason")!="not_enough_ingredient")return null;
-        foreach(var missing in J.Rows(J.Get(r,"MissingIngredients"))){
-            string material=J.S(missing,"DisplayName");double lack=J.N(missing,"Required")-J.N(missing,"Owned");if(lack<=0)continue;
-            var children=s.Recipes.Where(x=>Product(J.S(x,"DisplayName"))==material).OrderByDescending(x=>J.B(x,"Alterable")).ToList();
-            double pendingYield=s.Works.Where(w=>J.S(w,"DisplayName")==material || Product(J.S(w,"DisplayName"))==material).Sum(w=>{var cr=children.FirstOrDefault();return cr==null?1:Math.Max(1,J.N(cr,"ProducedPerWork"));});
-            if(pendingYield>=lack)continue;
-            foreach(var child in children){var p=Recipe(s,cfg,J.S(child,"DisplayName"),material,Math.Max(1,(int)Math.Ceiling(lack/Math.Max(1,J.N(child,"ProducedPerWork")))),ready,new HashSet<string>(visited));if(p!=null){p.Reason="하위 재료 보충: "+material+" → "+product;return p;}}
+        int batch=Math.Min(requested,RecipeBook.BatchSlots(s,cfg,name));if(batch<=0)return null;
+        var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==name);var definition=RecipeBook.Find(cfg,name);if(r==null||definition==null)return null;
+        if(!J.B(r,"Alterable")&&J.S(r,"Reason")!="not_enough_ingredient")return null;
+        bool prepared=true;
+        foreach(var ingredient in definition.Ingredients){
+            string material=ingredient.Material;double required=(double)ingredient.Count*batch;double owned=s.Count(material,cfg.CountStorage);if(owned>=required)continue;prepared=false;
+            double lack=required-owned-RecipeBook.Pending(s,cfg,material);if(lack<=0)continue;
+            var children=s.Recipes.Where(x=>cfg.RecipeDefinitions.Any(d=>d.Name==J.S(x,"DisplayName")&&d.Product==material)).OrderByDescending(x=>J.B(x,"Alterable")).ToList();
+            foreach(var child in children){double yield=J.N(child,"ProducedPerWork");if(yield<=0)continue;var p=Recipe(s,cfg,J.S(child,"DisplayName"),material,(int)Math.Min(Int32.MaxValue,Math.Ceiling(lack/yield)),ready,new HashSet<string>(visited));if(p!=null){p.Reason+=" → "+product+"용 "+material+" "+required.ToString("0")+"개 준비";return p;}}
             var gather=s.Gatherables.FirstOrDefault(x=>J.S(x,"DisplayName")==material&&J.B(x,"ToolOk"));
-            if(gather!=null&&ready("execute_gathering:"+material))return new Plan("execute_gathering",material,"하위 재료 채집: "+material+" → "+product,5);
+            if(gather!=null&&ready("execute_gathering:"+material))return new Plan("execute_gathering",material,"묶음 채집: "+material+" "+required.ToString("0")+"개 준비 (보유 "+owned.ToString("0")+", 채집은 최대 100개 단위)",5){GatherTarget=(int)Math.Min(Int32.MaxValue,required)};
         }
+        if(prepared&&J.B(r,"Alterable")&&Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,name))>0&&ready("execute_altering:"+name))return new Plan("execute_altering",name,"묶음 가공 등록: "+product+" · 남은 "+batch+"회분 재료 확보",5);
         return null;
     }
 
@@ -179,10 +185,8 @@ public static class Planner {
         foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
             if(!ready("execute_altering:"+g.Name))continue;
             var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==g.Name);if(r==null)continue;
-            string product=Product(g);int pending=s.Works.Count(x=>J.S(x,"DisplayName")==product||J.S(x,"DisplayName")==g.Name);if(Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,g.Name))<=0)continue;
-            double yield=J.N(r,"ProducedPerWork");if(yield<=0)continue;
-            bool need=g.Mode=="unlimited" || (g.Mode=="runs" ? g.RunsDone<g.Target : s.Count(product,cfg.CountStorage)+pending*yield<g.Target);
-            if(need){var p=Recipe(s,cfg,g.Name,product,Int32.MaxValue,ready,new HashSet<string>());if(p!=null){if(p.Name==g.Name&&p.Command=="execute_altering")p.Goal=g;return p;}}
+            string product=Product(g);int batch=BatchRuns(s,cfg,g);
+            if(batch>0){var p=Recipe(s,cfg,g.Name,product,batch,ready,new HashSet<string>());if(p!=null){if(p.Name==g.Name&&p.Command=="execute_altering")p.Goal=g;return p;}}
         }
         foreach(var g in cfg.Stocks.Where(x=>x.Gather&&x.Target>0)){
             if(s.Count(g.Name,cfg.CountStorage)>=g.Target||!ready("execute_gathering:"+g.Name))continue;

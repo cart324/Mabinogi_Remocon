@@ -1,0 +1,807 @@
+{
+  "Version": 1,
+  "Recipes": [
+    {
+      "Name": "목재",
+      "Product": "목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "통나무",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "목재+",
+      "Product": "목재+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "목재",
+          "Count": 3
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 4
+        }
+      ]
+    },
+    {
+      "Name": "상급 목재",
+      "Product": "상급 목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "목재+",
+          "Count": 3
+        },
+        {
+          "Material": "상급 통나무",
+          "Count": 15
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 8
+        }
+      ]
+    },
+    {
+      "Name": "상급 목재+",
+      "Product": "상급 목재+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 목재",
+          "Count": 4
+        },
+        {
+          "Material": "상급 통나무+",
+          "Count": 20
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 12
+        }
+      ]
+    },
+    {
+      "Name": "부드러운 목재",
+      "Product": "부드러운 목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 목재+",
+          "Count": 15
+        },
+        {
+          "Material": "부드러운 통나무",
+          "Count": 30
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 30
+        }
+      ]
+    },
+    {
+      "Name": "단단한 목재",
+      "Product": "단단한 목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 목재+",
+          "Count": 15
+        },
+        {
+          "Material": "단단한 통나무",
+          "Count": 30
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 30
+        }
+      ]
+    },
+    {
+      "Name": "최상급 목재",
+      "Product": "최상급 목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 목재+",
+          "Count": 5
+        },
+        {
+          "Material": "최상급 통나무",
+          "Count": 20
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 16
+        }
+      ]
+    },
+    {
+      "Name": "최상급 목재+",
+      "Product": "최상급 목재+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "최상급 목재",
+          "Count": 5
+        },
+        {
+          "Material": "최상급 통나무+",
+          "Count": 20
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "구름결 막대",
+      "Product": "구름결 막대",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "부드러운 목재",
+          "Count": 2
+        },
+        {
+          "Material": "환영 가루",
+          "Count": 30
+        },
+        {
+          "Material": "변화의 핵",
+          "Count": 50
+        },
+        {
+          "Material": "사포",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "특급 목재",
+      "Product": "특급 목재",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "최상급 목재+",
+          "Count": 5
+        },
+        {
+          "Material": "특급 통나무",
+          "Count": 20
+        },
+        {
+          "Material": "나무 진액",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "철괴(광석)",
+      "Product": "철괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "광석",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "철괴(철 광석)",
+      "Product": "철괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "철 광석",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "강철괴",
+      "Product": "강철괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "철괴",
+          "Count": 3
+        },
+        {
+          "Material": "석탄",
+          "Count": 4
+        }
+      ]
+    },
+    {
+      "Name": "합금강괴",
+      "Product": "합금강괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "강철괴",
+          "Count": 3
+        },
+        {
+          "Material": "동 광석",
+          "Count": 15
+        },
+        {
+          "Material": "석탄",
+          "Count": 8
+        }
+      ]
+    },
+    {
+      "Name": "타르",
+      "Product": "타르",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "통나무",
+          "Count": 50
+        },
+        {
+          "Material": "점토",
+          "Count": 25
+        }
+      ]
+    },
+    {
+      "Name": "특수강괴",
+      "Product": "특수강괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "합금강괴",
+          "Count": 4
+        },
+        {
+          "Material": "백동 광석",
+          "Count": 20
+        },
+        {
+          "Material": "석탄",
+          "Count": 12
+        }
+      ]
+    },
+    {
+      "Name": "은합금괴",
+      "Product": "은합금괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "특수강괴",
+          "Count": 5
+        },
+        {
+          "Material": "은 광석",
+          "Count": 20
+        },
+        {
+          "Material": "석탄",
+          "Count": 16
+        }
+      ]
+    },
+    {
+      "Name": "운철괴",
+      "Product": "운철괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "은합금괴",
+          "Count": 5
+        },
+        {
+          "Material": "운철 광석",
+          "Count": 20
+        },
+        {
+          "Material": "석탄",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "백금강괴",
+      "Product": "백금강괴",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "운철괴",
+          "Count": 5
+        },
+        {
+          "Material": "백금 광석",
+          "Count": 20
+        },
+        {
+          "Material": "석탄",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "옷감",
+      "Product": "옷감",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "양털",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "실크",
+      "Product": "실크",
+      "ProducedPerWork": 2,
+      "Ingredients": [
+        {
+          "Material": "거미줄",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "옷감+",
+      "Product": "옷감+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "옷감",
+          "Count": 3
+        },
+        {
+          "Material": "양털",
+          "Count": 4
+        }
+      ]
+    },
+    {
+      "Name": "상급 옷감",
+      "Product": "상급 옷감",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "옷감+",
+          "Count": 3
+        },
+        {
+          "Material": "상급 양털",
+          "Count": 15
+        },
+        {
+          "Material": "양털",
+          "Count": 8
+        }
+      ]
+    },
+    {
+      "Name": "두꺼운 옷감",
+      "Product": "두꺼운 옷감",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "두꺼운 양털",
+          "Count": 50
+        },
+        {
+          "Material": "상급 양털",
+          "Count": 100
+        },
+        {
+          "Material": "밀랍",
+          "Count": 2
+        }
+      ]
+    },
+    {
+      "Name": "상급 실크",
+      "Product": "상급 실크",
+      "ProducedPerWork": 2,
+      "Ingredients": [
+        {
+          "Material": "실크",
+          "Count": 4
+        },
+        {
+          "Material": "튼튼 버섯 진액",
+          "Count": 8
+        }
+      ]
+    },
+    {
+      "Name": "튼튼한 밧줄",
+      "Product": "튼튼한 밧줄",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "밧줄",
+          "Count": 6
+        },
+        {
+          "Material": "식물 섬유",
+          "Count": 90
+        },
+        {
+          "Material": "밀랍",
+          "Count": 8
+        },
+        {
+          "Material": "타르",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "최상급 옷감+",
+      "Product": "최상급 옷감+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "최상급 옷감",
+          "Count": 5
+        },
+        {
+          "Material": "최상급 양털+",
+          "Count": 20
+        },
+        {
+          "Material": "양털",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "특급 옷감",
+      "Product": "특급 옷감",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "최상급 옷감+",
+          "Count": 5
+        },
+        {
+          "Material": "특급 양털",
+          "Count": 20
+        },
+        {
+          "Material": "양털",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "특급 실크",
+      "Product": "특급 실크",
+      "ProducedPerWork": 2,
+      "Ingredients": [
+        {
+          "Material": "최상급 실크",
+          "Count": 4
+        },
+        {
+          "Material": "특급 거미줄",
+          "Count": 20
+        },
+        {
+          "Material": "튼튼 버섯 진액",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "새록 버섯 진액",
+      "Product": "새록 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "새록 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "튼튼 버섯 가루",
+      "Product": "튼튼 버섯 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "튼튼 버섯",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "튼튼 버섯 진액",
+      "Product": "튼튼 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "튼튼 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "새록 버섯 포자",
+      "Product": "새록 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "새록 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "튼튼 버섯 포자",
+      "Product": "튼튼 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "튼튼 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "쑥쑥 버섯 포자",
+      "Product": "쑥쑥 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "쑥쑥 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "쑥쑥 버섯 진액",
+      "Product": "쑥쑥 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "쑥쑥 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "아교",
+      "Product": "아교",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "상급 생가죽",
+          "Count": 30
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "깔끔 버섯 포자",
+      "Product": "깔끔 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "깔끔 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "깔끔 버섯 진액",
+      "Product": "깔끔 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "깔끔 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "마력 기폭제",
+      "Product": "마력 기폭제",
+      "ProducedPerWork": 10,
+      "Ingredients": [
+        {
+          "Material": "마력 깃든 돌",
+          "Count": 50
+        },
+        {
+          "Material": "마나 허브",
+          "Count": 50
+        },
+        {
+          "Material": "반짝이는 이끼",
+          "Count": 25
+        }
+      ]
+    },
+    {
+      "Name": "생채기꽃 가루",
+      "Product": "생채기꽃 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "생채기꽃",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "증폭 버섯 포자",
+      "Product": "증폭 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "증폭 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "증폭 버섯 진액",
+      "Product": "증폭 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "증폭 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "진정초 가루",
+      "Product": "진정초 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "진정초",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "솔솔 버섯 포자",
+      "Product": "솔솔 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "솔솔 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "솔솔 버섯 진액",
+      "Product": "솔솔 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "솔솔 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "환영 가루",
+      "Product": "환영 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "벼락 맞은 나뭇가지",
+          "Count": 20
+        },
+        {
+          "Material": "나비잠자리",
+          "Count": 10
+        }
+      ]
+    },
+    {
+      "Name": "끈적 풀 가루",
+      "Product": "끈적 풀 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "끈적 풀",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "산뜻 버섯 포자",
+      "Product": "산뜻 버섯 포자",
+      "ProducedPerWork": 15,
+      "Ingredients": [
+        {
+          "Material": "산뜻 버섯",
+          "Count": 30
+        },
+        {
+          "Material": "종이",
+          "Count": 3
+        }
+      ]
+    },
+    {
+      "Name": "산뜻 버섯 진액",
+      "Product": "산뜻 버섯 진액",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "산뜻 버섯 포자",
+          "Count": 10
+        },
+        {
+          "Material": "물이 든 병",
+          "Count": 1
+        }
+      ]
+    }
+  ]
+}

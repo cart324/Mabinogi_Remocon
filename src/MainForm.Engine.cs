@@ -67,11 +67,11 @@ public partial class MainForm {
     }
     void Pause(string reason){auto=false;generation++;planLabel.Text="자동화 OFF · "+reason;Log(reason);UpdateLiveLabels();}
     async Task PauseUser(){Pause("예약 일시정지 · 진행 중인 작업은 완료 응답을 기다립니다.");if(ownsFishing&&!actionOwned)await StopFishOnly();}
-    async Task StopFishOnly(){if(!ownsFishing||stopping)return;stopping=true;try{var r=await bridge.Call("stop_action",null);r.Check();ownsFishing=false;fishingTarget=0;fishingItem="";Log("리모컨이 시작한 낚시 중지");}catch(Exception ex){Pause("낚시 중지 확인 필요");Notify("낚시 중지 실패",ex.Message+" · 게임에서 직접 중지하세요.");}finally{stopping=false;}}
+    async Task StopFishOnly(){if(!ownsFishing||stopping)return;stopping=true;try{var r=await bridge.Call("stop_action",null);r.Check();ownsFishing=false;fishingTarget=0;fishingItem="";SetGatherStatus("낚시 중지 완료");Log("리모컨이 시작한 낚시 중지");}catch(Exception ex){Pause("낚시 중지 확인 필요");Notify("낚시 중지 실패",ex.Message+" · 게임에서 직접 중지하세요.");}finally{stopping=false;}}
     async Task StopOwned(){
         if(stopping)return;stopRequested=true;Pause("사용자가 중지를 요청했습니다.");
         if(!actionOwned&&!ownsFishing)return;stopping=true;
-        try{var r=await bridge.Call("stop_action",null);r.Check();ownsFishing=false;fishingTarget=0;Log("게임에 중지 요청 전달 · 진행 중인 명령의 응답을 기다립니다.");}
+        try{var r=await bridge.Call("stop_action",null);r.Check();ownsFishing=false;fishingTarget=0;SetGatherStatus("채집/낚시 중지 요청 전달 · 진행 명령 응답 확인 중");Log("게임에 중지 요청 전달 · 진행 중인 명령의 응답을 기다립니다.");}
         catch(Exception ex){Notify("게임 중지 확인 필요",ex.Message+" · 중단 버튼이 없는 단계라면 현재 작업 완료를 기다립니다.");}
         finally{stopping=false;nextPoll=DateTime.MinValue;}
     }
@@ -81,10 +81,11 @@ public partial class MainForm {
         if(p.Cost>0&&spent+p.Cost>cfg.Budget){Pause("날개 예산 초과로 예약 중지");return false;}
         if(p.Command=="execute_altering"&&Facilities.Free(snap,cfg,Facilities.ForRecipe(cfg,p.Name))<=0){Notice("시설 빈 슬롯이 없어 등록을 중지했습니다.");return false;}
         spent+=p.Cost;actionOwned=true;actionText=p.Reason+" · "+p.Name;planLabel.Text=actionText;Log(actionText);UpdateLiveLabels();
+        if(p.Command=="execute_gathering")SetGatherStatus("채집 진행 중 · "+p.Name+" (이동·채집 포함, 완료 응답 대기)");
         bool okay=false;var commandClock=System.Diagnostics.Stopwatch.StartNew();
         try{
             var response=await bridge.Call(p.Command,J.Obj("displayName",p.Name));response.Check();Log("게임 명령 응답: "+p.Command+" · "+commandClock.Elapsed.TotalSeconds.ToString("0.00")+"초");var body=J.Unwrap(response.Data);
-            string result=J.S(body,"result");if(result=="stopped_by_user"){Log("사용자 중지 · 후속 예약 취소");await RefreshSnapshot(true);return false;}
+            string result=J.S(body,"result");if(p.Command=="execute_gathering")SetGatherStatus(GatherResult.Describe(p.Name,body));if(result=="stopped_by_user"){Log("사용자 중지 · 후속 예약 취소");await RefreshSnapshot(true);return false;}
             if(p.Command=="execute_altering"&&result!="started")throw new Exception("가공 등록 완료가 확인되지 않았습니다: "+J.Json(body));
             if(p.Goal!=null){p.Goal.RunsDone++;Save();}
             if(p.Completed!=null)p.Completed();
@@ -92,11 +93,12 @@ public partial class MainForm {
             await RefreshSnapshot(true,true);
             if(p.Command=="execute_gathering"){
                 bool idleFish=p.Reason=="빈 시간 자동 낚시";
-                if(snap.Fishing){ownsFishing=true;fishingItem=p.Name;var target=cfg.Stocks.FirstOrDefault(x=>x.Name==p.Name&&x.Gather);fishingTarget=idleFish?0:target!=null?target.Target:snap.Count(p.Name,cfg.CountStorage)+100;Log("자동 낚시 감시 시작: "+p.Name);if(stopRequested||generation!=stamp||!auto||(idleFish&&!fishEnabled))await StopFishOnly();}
+                if(snap.Fishing){ownsFishing=true;fishingItem=p.Name;var target=cfg.Stocks.FirstOrDefault(x=>x.Name==p.Name&&x.Gather);fishingTarget=idleFish?0:p.GatherTarget>0?p.GatherTarget:target!=null?target.Target:snap.Count(p.Name,cfg.CountStorage)+100;Log("자동 낚시 감시 시작: "+p.Name);if(stopRequested||generation!=stamp||!auto||(idleFish&&!fishEnabled))await StopFishOnly();}
                 else if(idleFish){fishEnabled=false;fishCheck.Checked=false;Pause("선택 품목이 자동 낚시를 시작하지 않았습니다. 낚시 어종을 다시 선택하세요.");Notify("낚시 설정 확인","선택 항목: "+p.Name);}
             }
             if(snap.Full(cfg.FullPercent)){Pause("가방 중지 기준 도달");if(ownsFishing)await StopFishOnly();Notify("가방 정리 필요","자동 판매·분해는 게임 API 미지원입니다. 직접 정리 후 재시작하세요.");}
         }catch(Exception ex){
+            if(p.Command=="execute_gathering")SetGatherStatus("채집 오류 · "+p.Name+" · "+ex.Message);
             cooldown[p.Command+":"+p.Name]=DateTime.UtcNow.AddSeconds(120);Log("실행 실패: "+ex.Message);
             // Unknown/blocked outcomes require a human; never repeatedly spend or blindly retry.
             Pause("작업 실패로 중지 · 설정/게임 상태 확인 필요");Notify("작업 중지",p.Name+" · "+ex.Message);
@@ -141,7 +143,7 @@ public partial class MainForm {
     }
     public async Task RenderPreview(string dir){
         Directory.CreateDirectory(dir);string fixture=Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_FIXTURE");if(demo&&!String.IsNullOrEmpty(fixture)&&File.Exists(fixture)){var db=(DemoBridge)bridge;db.Works=J.Rows(J.Get(J.Parse(File.ReadAllText(fixture,Encoding.UTF8)),"works"));}await Poll(true);for(int i=0;i<tabs.TabPages.Count;i++){tabs.SelectedIndex=i;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(Path.Combine(dir,"screen-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}}
-        int dialogIndex=0;using(var capture=new Timer{Interval=250}){capture.Tick+=(s,e)=>{var dialog=Application.OpenForms.OfType<EditDialog>().FirstOrDefault();if(dialog==null)return;using(var bmp=new Bitmap(dialog.Width,dialog.Height)){dialog.DrawToBitmap(bmp,new Rectangle(0,0,dialog.Width,dialog.Height));bmp.Save(Path.Combine(dir,"dialog-"+dialogIndex+".png"),System.Drawing.Imaging.ImageFormat.Png);}dialog.DialogResult=DialogResult.Cancel;};capture.Start();EditGoal(null);dialogIndex++;EditStock(null);dialogIndex++;SaveLandmark();capture.Stop();}
+        int dialogIndex=0;using(var capture=new Timer{Interval=250}){capture.Tick+=(s,e)=>{var dialog=Application.OpenForms.OfType<EditDialog>().FirstOrDefault();if(dialog==null)return;using(var bmp=new Bitmap(dialog.Width,dialog.Height)){dialog.DrawToBitmap(bmp,new Rectangle(0,0,dialog.Width,dialog.Height));bmp.Save(Path.Combine(dir,"dialog-"+dialogIndex+".png"),System.Drawing.Imaging.ImageFormat.Png);}dialog.DialogResult=DialogResult.Cancel;};capture.Start();EditGoal(null);dialogIndex++;EditStock(null);dialogIndex++;SaveLandmark();dialogIndex++;EditRoute(null);dialogIndex++;EditRoutePoint(new RoutePreset{Material="통나무"},-1);capture.Stop();}
 
     }
     public async Task<object> CheckActionFlow(){
