@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Text;
-using System.Windows.Forms;
 namespace MabiRemote {
 public class RecipeIngredient {public string Material{get;set;} public int Count{get;set;} }
 public class RecipeDefinition {public string Name{get;set;} public string Product{get;set;} public int ProducedPerWork{get;set;} public List<RecipeIngredient> Ingredients{get;set;} public RecipeDefinition(){Ingredients=new List<RecipeIngredient>();} }
@@ -33,12 +32,5 @@ public static class RecipeBook {
     public static double Pending(Snapshot s,Settings cfg,string product){return s.Works.Where(w=>J.S(w,"DisplayName")==product||cfg.RecipeDefinitions.Any(d=>d.Name==J.S(w,"DisplayName")&&d.Product==product)).Sum(w=>{
         string name=J.S(w,"DisplayName");var recipe=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==name)??s.Recipes.FirstOrDefault(x=>cfg.RecipeDefinitions.Any(d=>d.Name==J.S(x,"DisplayName")&&d.Product==product));return recipe==null?0:Math.Max(0,J.N(recipe,"ProducedPerWork"));
     });}
-}
-public partial class MainForm {
-    void ImportRecipeBook(){if(!CanEdit())return;using(var d=new OpenFileDialog{Filter="배합표 JSON|*.json"})if(d.ShowDialog(this)==DialogResult.OK)try{
-        if(new FileInfo(d.FileName).Length>1024*1024)throw new IOException("배합표 파일이 너무 큽니다.");var rows=RecipeBook.Import(File.ReadAllText(d.FileName,Encoding.UTF8));
-        foreach(var row in rows){cfg.RecipeDefinitions.RemoveAll(x=>x.Name==row.Name);cfg.RecipeDefinitions.Add(row);}Save();RenderGoals();Notice("배합표 "+rows.Count+"개를 적용했습니다.");
-    }catch(Exception ex){Notice(UserError(ex));}}
-    void ExportRecipeBook(){using(var d=new SaveFileDialog{Filter="배합표 JSON|*.json",FileName="recipes.json"})if(d.ShowDialog(this)==DialogResult.OK)try{File.WriteAllText(d.FileName,J.Json(new RecipeFile{Recipes=cfg.RecipeDefinitions}),new UTF8Encoding(false));}catch(Exception ex){Notice(UserError(ex));}}
 }
 }

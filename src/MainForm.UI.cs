@@ -66,7 +66,6 @@ public partial class MainForm : Form {
     void BuildGoals(){
         goalGrid=Grid("사용","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","상태");var bar=Bar();autoFacilityCombo=Combo(180);Fill(autoFacilityCombo,Facilities.Names,null);autoFacilityCombo.SelectedIndexChanged+=(s,e)=>RenderGoals();bar.Controls.Add(autoFacilityCombo);
         bar.Controls.Add(Button("목표 추가",()=>EditGoal(null)));bar.Controls.Add(Button("선택 수정",()=>EditGoal(Selected<Goal>(goalGrid))));bar.Controls.Add(Button("선택 삭제",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){cfg.Goals.Remove(g);Save();RenderGoals();}}}));bar.Controls.Add(Button("횟수 초기화",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){g.RunsDone=0;Save();RenderGoals();}}}));bar.Controls.Add(Button("우선순위 ↑",()=>MoveGoal(-1)));bar.Controls.Add(Button("우선순위 ↓",()=>MoveGoal(1)));
-        bar.Controls.Add(Button("배합표 가져오기",ImportRecipeBook));bar.Controls.Add(Button("배합표 내보내기",ExportRecipeBook));
         Page("자동 가공","시설 선택 → 반복 목표 설정. 등록 횟수·목표 보유 수량·무제한을 지원하며 시설의 빈 슬롯만 사용합니다. 시설 슬롯 수만큼 재료를 묶음 준비합니다. 배합표가 없는 가공법은 등록하지 않습니다.",goalGrid,bar);
     }
     void BuildManual(){
