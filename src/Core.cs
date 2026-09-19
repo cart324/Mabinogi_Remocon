@@ -81,6 +81,13 @@ public static class Storage {
     public static void Save(Settings s){ Directory.CreateDirectory(Root); string file=Path.Combine(Root,"settings.json"), temp=file+".tmp"; File.WriteAllText(temp,J.Json(s),new UTF8Encoding(false)); if(File.Exists(file))File.Replace(temp,file,file+".bak");else File.Move(temp,file); }
     public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();s.Budget=Math.Max(0,Math.Min(10000,s.Budget));s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
 }
+public static class ConnectionStatus {
+    public static string Disconnected(object status){switch(J.S(status,"reason")){
+        case "game_off":return "게임 미실행";
+        case "option_off":return "AI 커넥터 비활성화";
+        default:return "게임 연결 실패";
+    }}
+}
 public class Reply { public int ExitCode; public object Data; public string Stderr; public void Check(){if(ExitCode!=0)throw new Exception("CLI 종료 코드 "+ExitCode+" / "+J.Json(Data));string e=J.Error(Data);if(e!="")throw new Exception(e);} }
 public interface IBridge { Task<Reply> Call(string command,object body); }
 public class GameBridge : IBridge {

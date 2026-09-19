@@ -1,4 +1,4 @@
-﻿# 에린 리모컨 1.3.0
+﻿# 에린 리모컨 1.3.1
 
 실행: `dist\ErinRemote.exe`. Windows 10/11, .NET Framework 4.8 이상. Python이나 AI 구독은 필요하지 않습니다.
 게임에 캐릭터로 접속하고 AI 커넥터를 켜세요. 기본 게임 CLI 경로는 `C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe`이며 설정에서 바꿀 수 있습니다.
@@ -67,7 +67,7 @@
 ## 업데이트와 배포
 
 실행 파일은 [GitHub Releases](https://github.com/cart324/Mabinogi_Remocon/releases/latest)의 Assets에서 받으세요.
-1.3.0부터 **업데이트** 탭에서 실행 시 자동 확인을 켜고 끌 수 있습니다. 자동 확인은 실행할 때 1회 수행합니다.
+1.3.1부터 **업데이트** 탭에서 실행 시 자동 확인을 켜고 끌 수 있습니다. 자동 확인은 실행할 때 1회 수행합니다.
 **릴리스 페이지 열기** 버튼으로 GitHub를 열고 Assets의 ErinRemote.exe를 받으세요.
 리모컨 작업을 중지·종료한 뒤 기존 EXE에 덮어쓰세요. 설정은 실행 파일과 별도 저장되어 유지됩니다.
 네트워크 오류나 GitHub 조회 한도는 게임 작업을 중지하지 않습니다. 앱에서 파일 다운로드·교체·재시작을 하지 않습니다.

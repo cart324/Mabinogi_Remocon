@@ -26,11 +26,11 @@ public partial class MainForm {
         Observe();RenderAll();if(afterAction)Log("작업 후 상태 갱신: "+refreshClock.Elapsed.TotalSeconds.ToString("0.00")+"초");
     }
     async Task Poll(bool force=false){
-        if(busy||closing||stopping)return;busy=true;bool stopFishOnFailure=false;
+        if(busy||closing||stopping)return;busy=true;bool stopFishOnFailure=false;string failureLabel="연결 확인 실패";bool disconnected=false;
         try{
-            var status=await bridge.Call("status",null);if(status.ExitCode!=0||J.S(status.Data,"pipe")!="connected")throw new Exception("게임 연결 끊김: "+J.S(status.Data,"reason"));
-            connected=true;
-            if(!hasCatalog){var cat=await Read("capabilities");if(J.B(cat,"loading"))throw new Exception("게임 명령 목록이 준비 중입니다. 캐릭터 접속 후 다시 확인합니다.");SetCatalog(cat);hasCatalog=true;if(!demo){Directory.CreateDirectory(Storage.Root);File.WriteAllText(Path.Combine(Storage.Root,"capabilities.json"),J.Json(cat),Encoding.UTF8);}Log("연결 성공 · 명령 "+commands.Count+"개");}
+            var status=await bridge.Call("status",null);if(status.ExitCode!=0||J.S(status.Data,"pipe")!="connected"){failureLabel=ConnectionStatus.Disconnected(status.Data);disconnected=true;throw new Exception(failureLabel+": "+J.S(status.Data,"reason"));}
+            connected=true;connectionIssue="";failureLabel="게임 상태 조회 실패";
+            if(!hasCatalog){var cat=await Read("capabilities");if(J.B(cat,"loading")){failureLabel="게임 접속 준비 중";throw new Exception("게임 명령 목록이 준비 중입니다. 캐릭터 접속 후 다시 확인합니다.");}SetCatalog(cat);hasCatalog=true;if(!demo){Directory.CreateDirectory(Storage.Root);File.WriteAllText(Path.Combine(Storage.Root,"capabilities.json"),J.Json(cat),Encoding.UTF8);}Log("연결 성공 · 명령 "+commands.Count+"개");}
             int stamp=generation;await RefreshSnapshot(force);
             if(ownsFishing && !snap.Fishing){ownsFishing=false;fishingItem="";fishingTarget=0;}
             if(ownsFishing&&fishingTarget>0&&snap.Count(fishingItem,cfg.CountStorage)>=fishingTarget){Log("낚시 목표 충족: "+fishingItem);await StopFishOnly();await RefreshSnapshot(false);}
@@ -50,7 +50,7 @@ public partial class MainForm {
                 await Task.Yield(); // Let Stop/Pause clicks run; no artificial inter-action delay.
             }
             lastWarning="";nextPoll=DateTime.UtcNow.AddSeconds(auto?1:3);
-        }catch(Exception ex){connected=false;hasCatalog=false;if(auto)Pause("조회 실패로 자동화를 일시정지했습니다.");stopFishOnFailure=ownsFishing;if(lastWarning!=ex.Message){Log(ex.Message);lastWarning=ex.Message;}nextPoll=DateTime.UtcNow.AddSeconds(15);}
+        }catch(Exception ex){connected=false;connectionIssue=ex is FileNotFoundException?"게임 CLI 파일 없음":failureLabel;hasCatalog=false;if(auto)Pause("조회 실패로 자동화를 일시정지했습니다.");stopFishOnFailure=ownsFishing;if(lastWarning!=ex.Message){Log(ex.Message);lastWarning=ex.Message;}nextPoll=DateTime.UtcNow.AddSeconds(disconnected?3:15);}
         finally{busy=false;UpdateLiveLabels();}
         if(stopFishOnFailure)await StopFishOnly();
     }
