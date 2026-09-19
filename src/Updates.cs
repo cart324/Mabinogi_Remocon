@@ -10,7 +10,7 @@ public sealed class ReleaseInfo {
     public Version Version;
 }
 public static class Updates {
-    public const string CurrentVersion="1.4.0";
+    public const string CurrentVersion="1.4.1";
     public const string Repository="https://github.com/cart324/Mabinogi_Remocon";
     public const string LatestApi="https://api.github.com/repos/cart324/Mabinogi_Remocon/releases/latest";
     public static ReleaseInfo ParseRelease(object data) {
@@ -68,7 +68,7 @@ public partial class MainForm {
             updatePage.Text=release==null?"업데이트":"업데이트 ●";
             updateStatus.Text=release==null?"현재 버전 "+Updates.CurrentVersion+" · 게시된 새 정식 버전이 없습니다.":"새 버전 "+release.Version+" · 릴리스 페이지에서 다운로드하세요.";
             if(background&&release!=null)tray.ShowBalloonTip(5000,"리모컨 업데이트",release.Version+" 버전이 있습니다. 업데이트 탭에서 릴리스 페이지를 여세요.",ToolTipIcon.Info);
-        }catch(Exception ex){if(!IsDisposed&&!closing){updateStatus.Text="업데이트 확인 실패: "+ex.Message;Log(updateStatus.Text);}}
+        }catch(Exception ex){if(!IsDisposed&&!closing){updateStatus.Text="업데이트 확인 실패: "+UserError(ex);Log(updateStatus.Text);}}
         finally{updating=false;if(!IsDisposed&&!closing){checkUpdateButton.Enabled=true;}}
     }
 }

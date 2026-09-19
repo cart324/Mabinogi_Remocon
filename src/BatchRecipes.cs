@@ -38,7 +38,7 @@ public partial class MainForm {
     void ImportRecipeBook(){if(!CanEdit())return;using(var d=new OpenFileDialog{Filter="배합표 JSON|*.json"})if(d.ShowDialog(this)==DialogResult.OK)try{
         if(new FileInfo(d.FileName).Length>1024*1024)throw new IOException("배합표 파일이 너무 큽니다.");var rows=RecipeBook.Import(File.ReadAllText(d.FileName,Encoding.UTF8));
         foreach(var row in rows){cfg.RecipeDefinitions.RemoveAll(x=>x.Name==row.Name);cfg.RecipeDefinitions.Add(row);}Save();RenderGoals();Notice("배합표 "+rows.Count+"개를 적용했습니다.");
-    }catch(Exception ex){Notice(ex.Message);}}
-    void ExportRecipeBook(){using(var d=new SaveFileDialog{Filter="배합표 JSON|*.json",FileName="recipes.json"})if(d.ShowDialog(this)==DialogResult.OK)try{File.WriteAllText(d.FileName,J.Json(new RecipeFile{Recipes=cfg.RecipeDefinitions}),new UTF8Encoding(false));}catch(Exception ex){Notice(ex.Message);}}
+    }catch(Exception ex){Notice(UserError(ex));}}
+    void ExportRecipeBook(){using(var d=new SaveFileDialog{Filter="배합표 JSON|*.json",FileName="recipes.json"})if(d.ShowDialog(this)==DialogResult.OK)try{File.WriteAllText(d.FileName,J.Json(new RecipeFile{Recipes=cfg.RecipeDefinitions}),new UTF8Encoding(false));}catch(Exception ex){Notice(UserError(ex));}}
 }
 }
