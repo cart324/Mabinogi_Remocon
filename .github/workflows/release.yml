@@ -25,7 +25,8 @@ jobs:
           git archive --format=zip --output=dist/ErinRemote-source.zip HEAD
           if ($LASTEXITCODE -ne 0) { throw 'Source archive failed.' }
       - name: Publish release
-        shell: powershell
+        # PowerShell 7 reads the runner-generated UTF-8 script correctly.
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
