@@ -17,7 +17,7 @@ public partial class MainForm : Form {
     Dictionary<string,DateTime> cooldown=new Dictionary<string,DateTime>();
     List<Goal> manualQueue=new List<Goal>();
     Label connectionLabel, placeLabel, activityLabel, weightLabel, wingsLabel, refreshLabel, planLabel, cliLabel;
-    Button startButton, pauseButton, stopButton; CheckBox fishCheck, storageCheck;
+    Button startButton; CheckBox fishCheck, storageCheck;
     NumericUpDown fullNumber; ComboBox fishCombo;
     TabControl tabs=new TabControl(); DataGridView facilityGrid,goalGrid,recipeGrid,manualGrid,itemGrid,stockGrid,landmarkGrid;
     Label activityWatchLabel, lastNotificationLabel;
@@ -52,8 +52,8 @@ public partial class MainForm : Form {
         var cards=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=4,RowCount=1};for(int i=0;i<4;i++)cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,25F));
         placeLabel=Card(cards,0,"현재 위치","—");activityLabel=Card(cards,1,"현재 행동","—");weightLabel=Card(cards,2,"가방 무게","—");wingsLabel=Card(cards,3,"정령의 날개","—");root.Controls.Add(cards,0,1);
         var controls=Bar();controls.Dock=DockStyle.Fill;
-        startButton=Button("자동화 시작",async()=>{if(auto)await StopOwned();else StartAutomation();},true);pauseButton=Button("예약 일시정지",async()=>await PauseUser());stopButton=Button("현재 작업 중지",async()=>await StopOwned());
-        controls.Controls.Add(startButton);controls.Controls.Add(pauseButton);controls.Controls.Add(stopButton);controls.Controls.Add(Button("새로고침",async()=>{if(!busy)await Poll(true);}));root.Controls.Add(controls,0,2);
+        startButton=Button("자동화 시작",async()=>{if(auto)await StopOwned();else StartAutomation();},true);
+        controls.Controls.Add(startButton);root.Controls.Add(controls,0,2);
         tabs.Multiline=true;tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",10);contentHost=new Panel{Dock=DockStyle.Fill};contentHost.Controls.Add(tabs);root.Controls.Add(contentHost,0,3);
         var footer=Bar();footer.Dock=DockStyle.Top;planLabel=Label("자동화 OFF · 버튼을 눌러야 게임 작업을 실행합니다.",9);refreshLabel=Label("",9);footer.Controls.Add(planLabel);footer.Controls.Add(refreshLabel);root.Controls.Add(footer,0,4);
         BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildLandmarks();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();SeparateUtilityPages();BuildUpdateBanner();

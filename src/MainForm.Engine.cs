@@ -67,7 +67,6 @@ public partial class MainForm {
         generation++;stopRequested=false;auto=true;cooldown.Clear();cfg.FishName=Convert.ToString(fishCombo.SelectedItem)??"";Save();nextPoll=DateTime.MinValue;Log("자동화 시작");planLabel.Text="자동화 ON · 우선순위 확인 중";UpdateLiveLabels();
     }
     void Pause(string reason){auto=false;generation++;if(closing)return;planLabel.Text="자동화 OFF · "+reason;Log(reason);UpdateLiveLabels();}
-    async Task PauseUser(){Pause("예약 일시정지 · 진행 중인 작업은 완료 응답을 기다립니다.");if(ownsFishing&&!actionOwned)await StopFishOnly();}
     async Task StopFishOnly(){if(!ownsFishing||stopping)return;stopping=true;try{var r=await bridge.Call("stop_action",null);r.Check();ownsFishing=false;fishingTarget=0;fishingItem="";SetGatherStatus("낚시 중지 완료");Log("리모컨이 시작한 낚시 중지");}catch(Exception ex){Pause("낚시 중지 확인 필요");Notify("낚시 중지 실패",UserError(ex)+" · 게임에서 직접 중지하세요.");}finally{stopping=false;}}
     async Task StopOwned(){
         if(MusicActive){RequestMusicStop();return;}
