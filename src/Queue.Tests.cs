@@ -9,6 +9,15 @@ public static class QueueTests {
     static Snapshot Sample(){return new Snapshot{At=DateTime.UtcNow,Activity=J.Obj("IsInCombat",false,"Dungeon",J.Obj("State","NotInDungeon"),"Mode",J.Obj("MainButtonState","Compass"))};}
     static void Recipe(Snapshot s,Settings c,string name){var d=RecipeBook.Find(c,name);s.Recipes.Add(J.Obj("DisplayName",name,"ProducedPerWork",d.ProducedPerWork,"Reason","not_enough_ingredient"));}
     static void Apply(Snapshot s,Settings c,Plan p){var d=RecipeBook.Find(c,p.Name);foreach(var i in d.Ingredients)Count(s,i.Material,s.Count(i.Material,false)-i.Count);s.Works.Add(J.Obj("DisplayName",p.Name,"FacilityName",Facilities.ForRecipe(c,p.Name),"IsCompleted",false));if(p.Goal!=null)p.Goal.RunsDone++;}
+    public static void Replenishment(){
+        var legacy=J.Serializer().Deserialize<Goal>("{\"Name\":\"목재+\"}");Assert(legacy.AutoReplenish,"legacy goal default");
+        var c=new Settings();var s=Sample();var goal=new Goal{Name="목재+",Mode="unlimited",AutoReplenish=false};c.Goals.Add(goal);Recipe(s,c,"목재+");Recipe(s,c,"목재");Count(s,"목재",3);Count(s,"통나무",100);Count(s,"나무 진액",100);s.Gatherables.Add(J.Obj("DisplayName","통나무","ToolOk",true));
+        var direct=Next(s,c);Assert(direct!=null&&direct.Name=="목재+","disabled replenishment must still register owned stock");Apply(s,c,direct);
+        Assert(Next(s,c)==null,"disabled replenishment made intermediate wood");Count(s,"통나무",0);Assert(Next(s,c)==null,"disabled replenishment gathered logs");
+        goal.AutoReplenish=true;Assert(Next(s,c).Name=="통나무","enabled replenishment did not gather");goal.AutoReplenish=false;
+        c.Goals.Add(new Goal{Name="목재",Mode="runs",Target=1});Count(s,"통나무",10);Assert(Next(s,c).Name=="목재","independent goal incorrectly disabled");
+        var saved=J.Serializer().Deserialize<Settings>(J.Json(c));Assert(!saved.Goals[0].AutoReplenish&&saved.Goals[1].AutoReplenish,"per-goal persistence");
+    }
     public static void Run(){
         var c=new Settings();var s=Sample();c.Goals.Add(new Goal{Name="목재+",Mode="runs",Target=14});Recipe(s,c,"목재+");Recipe(s,c,"목재");Count(s,"목재",12);Count(s,"통나무",50);Count(s,"나무 진액",1000);s.Gatherables.Add(J.Obj("DisplayName","통나무","ToolOk",true));
         for(int i=0;i<4;i++){var p=Next(s,c);Assert(p.Command=="execute_altering"&&p.Name=="목재+","available parent stock must register first");Apply(s,c,p);}

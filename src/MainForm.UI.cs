@@ -67,7 +67,7 @@ public partial class MainForm : Form {
         Page("가공 시설","전체 슬롯은 우상단 설정에서 시설별로 변경합니다 (기본 7칸). 완료 후 미수령 작업도 슬롯을 차지합니다. 모든 시설을 항상 표시합니다.",facilityGrid,bar);RenderFacilities();
     }
     void BuildGoals(){
-        goalGrid=Grid("우선순위","사용","시설","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","상태");var bar=Bar();float[] goalWidths={70,50,140,180,100,70,95,85,180};for(int i=0;i<goalGrid.Columns.Count;i++){goalGrid.Columns[i].SortMode=DataGridViewColumnSortMode.NotSortable;goalGrid.Columns[i].FillWeight=goalWidths[i];}
+        goalGrid=Grid("우선순위","사용","시설","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","재료 보충","상태");var bar=Bar();float[] goalWidths={65,45,130,160,90,65,85,75,75,155};for(int i=0;i<goalGrid.Columns.Count;i++){goalGrid.Columns[i].SortMode=DataGridViewColumnSortMode.NotSortable;goalGrid.Columns[i].FillWeight=goalWidths[i];}
         bar.Controls.Add(Button("목표 추가",()=>EditGoal(null)));bar.Controls.Add(Button("선택 수정",()=>EditGoal(Selected<Goal>(goalGrid))));bar.Controls.Add(Button("선택 삭제",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){cfg.Goals.Remove(g);Save();RenderGoals();}}}));bar.Controls.Add(Button("횟수 초기화",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){g.RunsDone=0;Save();RenderGoals();}}}));bar.Controls.Add(Button("우선순위 ↑",()=>MoveGoal(-1)));bar.Controls.Add(Button("우선순위 ↓",()=>MoveGoal(1)));
         Page("자동 가공","모든 시설의 목표를 하나의 우선순위로 관리합니다. 목표 추가에서 시설과 가공법을 선택하세요. 보유 재료 등록 → 현재 부족 재료 → 다음 가공분 준비 순으로 진행합니다.",goalGrid,bar);
     }

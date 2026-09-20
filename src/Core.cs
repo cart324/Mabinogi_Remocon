@@ -31,11 +31,12 @@ public class Goal {
     public string Product {get;set;}
     public string Facility {get;set;}
     public bool Enabled {get;set;}
+    public bool AutoReplenish {get;set;}
     public int Target {get;set;}
     public string Mode {get;set;}
     public int RunsDone {get;set;}
     public int MaxQueued {get;set;}
-    public Goal(){Enabled=true;Target=100;Mode="stock";MaxQueued=3;Product="";}
+    public Goal(){AutoReplenish=true;Enabled=true;Target=100;Mode="stock";MaxQueued=3;Product="";}
 }
 public class StockGoal { public string Name{get;set;} public int Target{get;set;} public bool Gather{get;set;} public StockGoal(){Target=100;Gather=true;} }
 public class Landmark { public string Name{get;set;} public string Area{get;set;} public double X{get;set;} public double Y{get;set;} public string Kind{get;set;} }
@@ -168,13 +169,14 @@ public static class Planner {
         int slots=future?Facilities.Total(cfg,Facilities.ForRecipe(cfg,goal.Name)):RecipeBook.BatchSlots(s,cfg,goal.Name);double needed=goal.Mode=="unlimited"?slots:goal.Mode=="runs"?Math.Max(0,goal.Target-goal.RunsDone):Math.Ceiling(Math.Max(0,goal.Target-s.Count(Product(goal),cfg.CountStorage)-RecipeBook.Pending(s,cfg,Product(goal)))/J.N(r,"ProducedPerWork"));
         return (int)Math.Min(slots,needed);
     }
-    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int requested, Func<string,bool> ready, HashSet<string> visited,bool readyOnly=false,bool future=false){
+    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int requested, Func<string,bool> ready, HashSet<string> visited,bool readyOnly=false,bool future=false,bool replenish=true){
         if(!visited.Add(name)||visited.Count>16)return null;
         int batch=Math.Min(requested,future?Facilities.Total(cfg,Facilities.ForRecipe(cfg,name)):RecipeBook.BatchSlots(s,cfg,name));if(batch<=0)return null;
         var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==name);var definition=RecipeBook.Find(cfg,name);if(r==null||definition==null)return null;
         if(!J.B(r,"Alterable")&&J.S(r,"Reason")!="not_enough_ingredient")return null;
         bool canRegister=J.B(r,"Alterable")&&definition.Ingredients.All(i=>s.Count(i.Material,cfg.CountStorage)>=i.Count)&&Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,name))>0&&ready("execute_altering:"+name);
         if(canRegister)return new Plan("execute_altering",name,"보유 재료 우선 등록: "+product,5);
+        if(!replenish)return null;
         bool prepared=true;
         foreach(var ingredient in definition.Ingredients){
             string material=ingredient.Material;double required=(double)ingredient.Count*batch;double owned=s.Count(material,cfg.CountStorage);if(owned>=required)continue;prepared=false;
@@ -195,12 +197,12 @@ public static class Planner {
         if(done!=null)return new Plan("complete_altering_work",J.S(done,"DisplayName"),J.S(done,"FacilityName")+" 완료 가공물 수령",0);
         // Search every goal for ready work before starting any material gathering.
         for(int phase=0;phase<3;phase++)foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
-            if(!ready("execute_altering:"+g.Name))continue;
+            if(!ready("execute_altering:"+g.Name)||(phase>0&&!g.AutoReplenish))continue;
             int free=Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,g.Name));
             if(phase==1&&free==0)continue;
             bool future=phase==2||(phase==0&&free==0);
             int batch=BatchRuns(s,cfg,g,future);if(batch<=0)continue;
-            var p=Recipe(s,cfg,g.Name,Product(g),batch,ready,new HashSet<string>(),phase==0,future);
+            var p=Recipe(s,cfg,g.Name,Product(g),batch,ready,new HashSet<string>(),phase==0,future,g.AutoReplenish);
             if(p==null)continue;
             if(p.Name==g.Name&&p.Command=="execute_altering")p.Goal=g;
             if(phase==1)p.Reason="현재 가공 준비 · "+p.Reason;

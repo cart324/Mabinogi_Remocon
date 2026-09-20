@@ -23,13 +23,14 @@ public partial class MainForm {
             var mode=Combo(300);mode.Items.AddRange(new object[]{"목표 보유 수량","등록 횟수","무제한 가공"});mode.SelectedIndex=old==null?0:old.Mode=="runs"?1:old.Mode=="unlimited"?2:0;
             var count=Number(old==null?100:Math.Min(1000000,old.Target),1000000);mode.SelectedIndexChanged+=(s,e)=>count.Enabled=mode.SelectedIndex!=2;count.Enabled=mode.SelectedIndex!=2;
             var enabled=new CheckBox{Text="목표 사용",AutoSize=true,Checked=old==null||old.Enabled};
-            d.Add("가공 시설",facilityChoice);d.Content.Controls.Add(all);d.Add("가공법",recipe);d.Add("완제품 · 보유 수량 기준",product);d.Add("반복 방식",mode);d.Add("목표 수량 또는 등록 횟수",count);d.Content.Controls.Add(enabled);
+            var replenish=new CheckBox{Text="부족 재료 자동 보충 (하위 가공·채집·다음 가공분 준비)",AutoSize=true,Checked=old==null||old.AutoReplenish};
+            d.Add("가공 시설",facilityChoice);d.Content.Controls.Add(all);d.Add("가공법",recipe);d.Add("완제품 · 보유 수량 기준",product);d.Add("반복 방식",mode);d.Add("목표 수량 또는 등록 횟수",count);d.Content.Controls.Add(enabled);d.Content.Controls.Add(replenish);
             d.Hint("시설 빈 슬롯에만 등록합니다. 등록 횟수는 성공한 작업 등록 횟수이며 앱 재시작 후에도 이어집니다. 시설/가공법 분류는 선택한 시설로 저장됩니다.");
             if(d.ShowDialog(this)!=DialogResult.OK||recipe.SelectedItem==null)return;string selected=Convert.ToString(recipe.SelectedItem);
             if(cfg.Goals.Any(g=>g!=old&&g.Name==selected)){Notice("이미 등록된 가공법입니다.");return;}
             var goal=old??new Goal();string newMode=mode.SelectedIndex==0?"stock":mode.SelectedIndex==1?"runs":"unlimited";
             if(goal.Name!=selected||goal.Mode!=newMode)goal.RunsDone=0;
-            goal.Name=selected;goal.Product=Convert.ToString(product.SelectedItem);goal.Facility=facility;goal.Mode=newMode;goal.Target=(int)count.Value;goal.Enabled=enabled.Checked;cfg.RecipeFacilities[selected]=facility;if(old==null)cfg.Goals.Add(goal);Save();RenderAll();
+            goal.Name=selected;goal.Product=Convert.ToString(product.SelectedItem);goal.Facility=facility;goal.Mode=newMode;goal.Target=(int)count.Value;goal.Enabled=enabled.Checked;goal.AutoReplenish=replenish.Checked;cfg.RecipeFacilities[selected]=facility;if(old==null)cfg.Goals.Add(goal);Save();RenderAll();
         }
     }
     void AddManual(){
@@ -57,7 +58,7 @@ public partial class MainForm {
         string product=Planner.Product(g);var recipe=snap.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==g.Name);int pending=snap.Works.Count(x=>J.S(x,"DisplayName")==product||J.S(x,"DisplayName")==g.Name);
         bool met=g.Mode=="runs"?g.RunsDone>=g.Target:g.Mode=="stock"&&snap.Count(product,cfg.CountStorage)>=g.Target;
         string state=!g.Enabled?"OFF":met?"목표 충족":Facilities.Free(snap,cfg,Facilities.ForRecipe(cfg,g.Name))==0?"빈 슬롯 대기":RecipeBook.Find(cfg,g.Name)==null?"배합표 필요":Planner.BatchRuns(snap,cfg,g)>0?Planner.BatchRuns(snap,cfg,g)+"회분 재료 준비 / 등록":Reason(recipe);
-        int i=goalGrid.Rows.Add(cfg.Goals.IndexOf(g)+1,g.Enabled?"ON":"OFF",Facilities.ForRecipe(cfg,g.Name),g.Name+(g.Name!=product?" → "+product:""),g.Mode=="unlimited"?"무제한":g.Mode=="runs"?"등록 횟수":"목표 보유",g.Mode=="unlimited"?"∞":g.Target.ToString(),g.Mode=="runs"?g.RunsDone:snap.Count(product,cfg.CountStorage),pending,state);goalGrid.Rows[i].Tag=g;if(g==selected)goalGrid.Rows[i].Selected=true;
+        int i=goalGrid.Rows.Add(cfg.Goals.IndexOf(g)+1,g.Enabled?"ON":"OFF",Facilities.ForRecipe(cfg,g.Name),g.Name+(g.Name!=product?" → "+product:""),g.Mode=="unlimited"?"무제한":g.Mode=="runs"?"등록 횟수":"목표 보유",g.Mode=="unlimited"?"∞":g.Target.ToString(),g.Mode=="runs"?g.RunsDone:snap.Count(product,cfg.CountStorage),pending,g.AutoReplenish?"ON":"OFF",state);goalGrid.Rows[i].Tag=g;if(g==selected)goalGrid.Rows[i].Selected=true;
     }}
     void RenderRecipes(){if(recipeGrid==null)return;string selected=Selected<string>(recipeGrid);recipeGrid.Rows.Clear();foreach(var r in snap.Recipes.GroupBy(x=>J.S(x,"DisplayName")).Select(g=>g.OrderByDescending(x=>J.B(x,"Alterable")).First())){string n=J.S(r,"DisplayName");if((manualShowAll==null||!manualShowAll.Checked)&&Facilities.ForRecipe(cfg,n)!=CurrentManualFacility())continue;int i=recipeGrid.Rows.Add(n,J.B(r,"Alterable")?"가능":"대기",J.N(r,"ProducedPerWork"),Reason(r));recipeGrid.Rows[i].Tag=n;if(n==selected)recipeGrid.Rows[i].Selected=true;}}
     void RenderManual(){if(manualGrid==null)return;manualGrid.Rows.Clear();foreach(var r in manualQueue){int i=manualGrid.Rows.Add(r.Facility??Facilities.ForRecipe(cfg,r.Name),r.Name,r.Target);manualGrid.Rows[i].Tag=r;}RenderManualInfo();}
