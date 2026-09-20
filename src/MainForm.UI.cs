@@ -48,22 +48,22 @@ public partial class MainForm : Form {
     void BuildUI(){
         var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(16)};
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));root.RowStyles.Add(new RowStyle(SizeType.Absolute,90));root.RowStyles.Add(new RowStyle(SizeType.Absolute,58));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.AutoSize));Controls.Add(root);
-        var heading=Bar();heading.Dock=DockStyle.Top;heading.AutoSizeMode=AutoSizeMode.GrowAndShrink;heading.Controls.Add(Label("에린 리모컨",20));connectionLabel=Label(demo?"DEMO · 게임 조작 없음":"연결 확인 중",10);heading.Controls.Add(connectionLabel);root.Controls.Add(heading,0,0);
+        root.Controls.Add(BuildHeader(),0,0);
         var cards=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=4,RowCount=1};for(int i=0;i<4;i++)cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,25F));
         placeLabel=Card(cards,0,"현재 위치","—");activityLabel=Card(cards,1,"현재 행동","—");weightLabel=Card(cards,2,"가방 무게","—");wingsLabel=Card(cards,3,"정령의 날개","—");root.Controls.Add(cards,0,1);
         var controls=Bar();controls.Dock=DockStyle.Fill;
-        startButton=Button("자동화 시작",StartAutomation,true);pauseButton=Button("예약 일시정지",async()=>await PauseUser());stopButton=Button("중지",async()=>await StopOwned());
+        startButton=Button("자동화 시작",async()=>{if(auto)await StopOwned();else StartAutomation();},true);pauseButton=Button("예약 일시정지",async()=>await PauseUser());stopButton=Button("현재 작업 중지",async()=>await StopOwned());
         controls.Controls.Add(startButton);controls.Controls.Add(pauseButton);controls.Controls.Add(stopButton);controls.Controls.Add(Button("새로고침",async()=>{if(!busy)await Poll(true);}));root.Controls.Add(controls,0,2);
-        tabs.Multiline=true;tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",10);root.Controls.Add(tabs,0,3);
+        tabs.Multiline=true;tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",10);contentHost=new Panel{Dock=DockStyle.Fill};contentHost.Controls.Add(tabs);root.Controls.Add(contentHost,0,3);
         var footer=Bar();footer.Dock=DockStyle.Top;planLabel=Label("자동화 OFF · 버튼을 눌러야 게임 작업을 실행합니다.",9);refreshLabel=Label("",9);footer.Controls.Add(planLabel);footer.Controls.Add(refreshLabel);root.Controls.Add(footer,0,4);
-        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildLandmarks();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();
+        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildLandmarks();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();SeparateUtilityPages();BuildUpdateBanner();
     }
     Label Card(TableLayoutPanel host,int col,string title,string value){var p=new Panel{Dock=DockStyle.Fill,BackColor=Color.White,Margin=new Padding(4)};var top=new Label{Text=title,AutoSize=true,Location=new Point(10,8),ForeColor=Color.FromArgb(83,111,112)};var val=new Label{Text=value,Location=new Point(10,34),Size=new Size(340,34),Anchor=AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right,Font=new Font("맑은 고딕",12,FontStyle.Bold),TextAlign=ContentAlignment.TopLeft};p.Controls.Add(top);p.Controls.Add(val);host.Controls.Add(p,col,0);return val;}
     void BuildFacilities(){
         facilityGrid=Grid("시설","전체 슬롯","빈 슬롯","완료","진행·대기","다음 완료까지","마지막 완료까지","가공 품목");
         float[] widths={171,83,81,69,102,104,99,422};for(int i=0;i<widths.Length;i++){facilityGrid.Columns[i].FillWeight=widths[i];facilityGrid.Columns[i].SortMode=DataGridViewColumnSortMode.NotSortable;}facilityGrid.Columns[5].HeaderText="다음 완료\n남은 시간";facilityGrid.Columns[6].HeaderText="최종 완료\n남은 시간";
         var bar=Bar();bar.Controls.Add(Button("선택 시설 자동 가공",()=>{var n=Selected<string>(facilityGrid);if(n!=null){autoFacilityCombo.SelectedItem=n;tabs.SelectedIndex=1;}}));bar.Controls.Add(Button("선택 시설 수동 가공",()=>{var n=Selected<string>(facilityGrid);if(n!=null){manualFacilityCombo.SelectedItem=n;tabs.SelectedIndex=2;}}));bar.Controls.Add(Button("일괄 수령",async()=>await ManualCollect()));
-        Page("가공 시설","전체 슬롯은 설정 · 기록 탭에서 시설별로 변경합니다 (기본 7칸). 완료 후 미수령 작업도 슬롯을 차지합니다. 모든 시설을 항상 표시합니다.",facilityGrid,bar);RenderFacilities();
+        Page("가공 시설","전체 슬롯은 우상단 설정에서 시설별로 변경합니다 (기본 7칸). 완료 후 미수령 작업도 슬롯을 차지합니다. 모든 시설을 항상 표시합니다.",facilityGrid,bar);RenderFacilities();
     }
     void BuildGoals(){
         goalGrid=Grid("사용","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","상태");var bar=Bar();autoFacilityCombo=Combo(180);Fill(autoFacilityCombo,Facilities.Names,null);autoFacilityCombo.SelectedIndexChanged+=(s,e)=>RenderGoals();bar.Controls.Add(autoFacilityCombo);

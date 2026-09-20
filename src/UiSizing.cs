@@ -56,7 +56,7 @@ public partial class MainForm {
         System.IO.Directory.CreateDirectory(directory);var size=Size;tabs.SelectedIndex=0;Application.DoEvents();float original=facilityGrid.Font.Size;var root=Controls.OfType<TableLayoutPanel>().First();float cardHeight=root.RowStyles[1].Height;
         ApplyDisplayScale(80);Application.DoEvents();bool compact=facilityGrid.Font.Size<original&&root.RowStyles[1].Height<cardHeight&&Size==size;SaveLivePreview(System.IO.Path.Combine(directory,"scale-80.png"));
         for(int i=0;i<3;i++){ApplyDisplayScale(125);ApplyDisplayScale(70);ApplyDisplayScale(100);}Application.DoEvents();bool stable=Math.Abs(facilityGrid.Font.Size-original)<0.01&&Math.Abs(root.RowStyles[1].Height-cardHeight)<0.01&&Size==size;
-        SaveLivePreview(System.IO.Path.Combine(directory,"scale-100.png"));ApplyDisplayScale(80);tabs.SelectedIndex=6;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(System.IO.Path.Combine(directory,"settings-80.png"));}
+        SaveLivePreview(System.IO.Path.Combine(directory,"scale-100.png"));ApplyDisplayScale(80);ShowUtility(settingsView);Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(System.IO.Path.Combine(directory,"settings-80.png"));}
         return J.Obj("passed",compact&&stable,"sameWindowSize",Size==size,"compact",compact,"restoresWithoutDrift",stable);
     }
 }
