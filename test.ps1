@@ -12,3 +12,8 @@ $testProcess.WaitForExit()
 Get-Content -LiteralPath "$projectRoot\work\test-results.txt" -Encoding UTF8
 if ($testProcess.ExitCode -ne 0) { throw 'Tests failed.' }
 
+
+& $compiler /nologo /target:exe /codepage:65001 /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/reference:$projectRoot\work\ErinRemote.exe" "/out:$projectRoot\work\ClosingChecks.exe" "$projectRoot\tests\ClosingChecks.cs"
+if ($LASTEXITCODE -ne 0) { throw 'Closing check build failed.' }
+& "$projectRoot\work\ClosingChecks.exe"
+if ($LASTEXITCODE -ne 0) { throw 'Closing checks failed.' }

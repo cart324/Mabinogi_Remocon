@@ -86,9 +86,9 @@ public partial class MainForm : Form {
     T Selected<T>(DataGridView grid) where T:class {return grid.SelectedRows.Count==0?null:grid.SelectedRows[0].Tag as T;}
     bool CanEdit(){if(auto||busy||MusicActive){Notice("주크박스·자동화 또는 진행 중인 작업을 멈춘 뒤 변경하세요.","설정 변경");return false;}return true;}
     string UserError(Exception ex){Log("오류 상세: "+ex.Message);return FriendlyText.Error(ex);}
-    void Notice(string message,string title="안내"){planLabel.Text=title+" · "+message;planLabel.ForeColor=Color.Firebrick;Log(title+" · "+message);}
+    void Notice(string message,string title="안내"){if(closing||IsDisposed)return;planLabel.Text=title+" · "+message;planLabel.ForeColor=Color.Firebrick;Log(title+" · "+message);}
     void Save(){if(demo||preview)return;try{Storage.Save(cfg);}catch(Exception ex){Log("설정 저장 실패: "+ex.Message);}}
-    void Log(string text){string line=DateTime.Now.ToString("HH:mm:ss")+"  "+text; if(logBox!=null){logBox.AppendText(line+Environment.NewLine);if(logBox.TextLength>80000)logBox.Text=logBox.Text.Substring(logBox.TextLength-50000);}if(!demo)try{Directory.CreateDirectory(Storage.Root);File.AppendAllText(Path.Combine(Storage.Root,"events-"+DateTime.Now.ToString("yyyyMMdd")+".log"),line+Environment.NewLine);}catch{}}
-    void Notify(string title,string text){Log(title+" · "+text);if(lastNotificationLabel!=null)lastNotificationLabel.Text="최근 알림 ("+DateTime.Now.ToString("HH:mm:ss")+"): "+title+" · "+text;if(!preview){try{System.Media.SystemSounds.Asterisk.Play();tray.ShowBalloonTip(7000,title,text,ToolTipIcon.Info);}catch(Exception ex){Log("Windows 알림 표시 실패: "+ex.Message);}}}
+    void Log(string text){if(closing||IsDisposed)return;string line=DateTime.Now.ToString("HH:mm:ss")+"  "+text; if(logBox!=null){logBox.AppendText(line+Environment.NewLine);if(logBox.TextLength>80000)logBox.Text=logBox.Text.Substring(logBox.TextLength-50000);}if(!demo)try{Directory.CreateDirectory(Storage.Root);File.AppendAllText(Path.Combine(Storage.Root,"events-"+DateTime.Now.ToString("yyyyMMdd")+".log"),line+Environment.NewLine);}catch{}}
+    void Notify(string title,string text){if(closing||IsDisposed)return;Log(title+" · "+text);if(lastNotificationLabel!=null)lastNotificationLabel.Text="최근 알림 ("+DateTime.Now.ToString("HH:mm:ss")+"): "+title+" · "+text;if(!preview){try{System.Media.SystemSounds.Asterisk.Play();tray.ShowBalloonTip(7000,title,text,ToolTipIcon.Info);}catch(Exception ex){Log("Windows 알림 표시 실패: "+ex.Message);}}}
 }
 }

@@ -113,7 +113,11 @@ public static class ConnectionStatus {
 }
 public class Reply { public int ExitCode; public object Data; public string Stderr; public void Check(){if(ExitCode!=0)throw new GameCommandException(FriendlyText.Reply(Data,ExitCode),"CLI 종료 코드 "+ExitCode+" / "+J.Json(Data));string e=J.Error(Data);if(e!="")throw new GameCommandException(FriendlyText.Reply(Data,ExitCode),e);} }
 public interface IBridge { Task<Reply> Call(string command,object body); }
-public class GameBridge : IBridge {
+public class GameBridge : IBridge, IDisposable {
+    readonly object processGate=new object();
+    readonly HashSet<Process> activeProcesses=new HashSet<Process>();
+    bool disposed;
+    public void Dispose(){lock(processGate){disposed=true;foreach(var process in activeProcesses){try{if(!process.HasExited)process.Kill();}catch(InvalidOperationException){}catch(System.ComponentModel.Win32Exception){}}}}
     public string CliPath;
     public GameBridge(string path){CliPath=path;}
     public Task<Reply> Call(string command,object body){
@@ -122,10 +126,10 @@ public class GameBridge : IBridge {
             string args=command;
             if(body!=null){string text=body as string ?? J.Json(body);args+=" base64:"+Convert.ToBase64String(Encoding.UTF8.GetBytes(text));}
             var si=new ProcessStartInfo(CliPath,args){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8,WorkingDirectory=Path.GetDirectoryName(CliPath)};
-            using(var p=new Process()){p.StartInfo=si;p.Start();var output=p.StandardOutput.ReadToEndAsync();var err=p.StandardError.ReadToEndAsync();string text=await output;string stderr=await err;p.WaitForExit();object data;
+            using(var p=new Process()){p.StartInfo=si;lock(processGate){if(disposed)throw new ObjectDisposedException("GameBridge");p.Start();activeProcesses.Add(p);}try{var output=p.StandardOutput.ReadToEndAsync();var err=p.StandardError.ReadToEndAsync();string text=await output;string stderr=await err;p.WaitForExit();object data;
                 try{data=J.Parse(text.Trim().TrimStart('\uFEFF'));}catch{throw new GameCommandException("게임 응답을 읽지 못했습니다. 게임 연결 상태를 확인하세요.","CLI 응답이 JSON이 아닙니다: "+text.Substring(0,Math.Min(300,text.Length)));}
                 return new Reply{ExitCode=p.ExitCode,Data=data,Stderr=stderr};
-            }
+            }finally{lock(processGate){activeProcesses.Remove(p);}}}
         });
     }
 }
