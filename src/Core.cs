@@ -40,6 +40,8 @@ public class Goal {
 public class StockGoal { public string Name{get;set;} public int Target{get;set;} public bool Gather{get;set;} public StockGoal(){Target=100;Gather=true;} }
 public class Landmark { public string Name{get;set;} public string Area{get;set;} public double X{get;set;} public double Y{get;set;} public string Kind{get;set;} }
 public class Settings {
+    public List<PlaylistEntry> Playlist{get;set;}
+    public bool PlaylistRepeat{get;set;}
     public int UiScale{get;set;}
     public List<RecipeDefinition> RecipeDefinitions{get;set;}
     public List<RoutePreset> Routes{get;set;}
@@ -57,7 +59,7 @@ public class Settings {
     public string FishName{get;set;}
     public Dictionary<string,int> FacilitySlots{get;set;}
     public Dictionary<string,string> RecipeFacilities{get;set;}
-    public Settings(){UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
+    public Settings(){Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
 }
 public static class Facilities {
     public static readonly string[] Names={"금속 가공 시설","목재 가공 시설","옷감 가공 시설","가죽 가공 시설","약품 가공 시설","식재료 가공 시설"};
@@ -99,7 +101,7 @@ public static class Storage {
     public static string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"MabiRemote");
     public static string LastLoadWarning="";
     public static void Save(Settings s){ Directory.CreateDirectory(Root); string file=Path.Combine(Root,"settings.json"), temp=file+".tmp"; File.WriteAllText(temp,J.Json(s),new UTF8Encoding(false)); if(File.Exists(file))File.Replace(temp,file,file+".bak");else File.Move(temp,file); }
-    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.RecipeDefinitions==null)s.RecipeDefinitions=RecipeBook.Defaults();if(s.Routes==null)s.Routes=new List<RoutePreset>();if(s.MaterialRoutes==null)s.MaterialRoutes=new Dictionary<string,string>();if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();if(!UiSizing.Options.Contains(s.UiScale))s.UiScale=100;s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
+    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.Playlist==null)s.Playlist=new List<PlaylistEntry>();s.Playlist=s.Playlist.Where(x=>x!=null&&!String.IsNullOrWhiteSpace(x.Title)).ToList();if(s.RecipeDefinitions==null)s.RecipeDefinitions=RecipeBook.Defaults();if(s.Routes==null)s.Routes=new List<RoutePreset>();if(s.MaterialRoutes==null)s.MaterialRoutes=new Dictionary<string,string>();if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();if(!UiSizing.Options.Contains(s.UiScale))s.UiScale=100;s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
 }
 public static class ConnectionStatus {
     public static string Disconnected(object status){switch(J.S(status,"reason")){
@@ -129,7 +131,7 @@ public class GameBridge : IBridge {
 public class Snapshot {
     public object Environment,Activity,Inventory;
     public List<object> Items=new List<object>(),Works=new List<object>(),Recipes=new List<object>(),Gatherables=new List<object>();
-    public DateTime At=DateTime.MinValue;
+    public DateTime At=DateTime.MinValue,ActivityAt=DateTime.MinValue;
     public int Count(string name,bool storage){return (int)Items.Where(x=>J.S(x,"DisplayName")==name&&(storage||J.S(x,"Location")=="inventory")).Sum(x=>J.N(x,"Count"));}
     public int Queued(string name){return Works.Count(x=>J.S(x,"DisplayName")==name);}
     public object Section(string name){return J.Get(Activity,name)??Activity;}
@@ -203,6 +205,7 @@ public static class Planner {
 }
 public class DemoBridge : IBridge {
     public List<object> Works=new List<object>(); public Dictionary<string,int> Counts=new Dictionary<string,int>{{"정령의 날개",12051},{"통나무",140},{"목재",12},{"거미줄",80},{"옷감",5},{"연어",4}};
+    public MusicTestBridge Music=new MusicTestBridge();
     public bool RejectCollection; public bool Fishing; public string Dungeon="NotInDungeon";
     public List<string> Calls=new List<string>();
     public Task<Reply> Call(string cmd,object body){
@@ -210,7 +213,8 @@ public class DemoBridge : IBridge {
         if(cmd=="status")d=J.Obj("pipe","connected");
         else if(cmd=="capabilities")d=J.Parse(Program.ReadEmbedded("capabilities.json"));
         else if(cmd=="get_current_environment")d=J.Obj("GameSpaceDisplayName","던바튼","ChannelDisplayName","데모 채널","Weather","Sunny","WorldPosition",J.Obj("X",180.6,"Y",-222.7));
-        else if(cmd=="get_activity")d=J.Obj("Dungeon",J.Obj("State",Dungeon),"combatState",J.Obj("IsInCombat",false),"Mode",J.Obj("MainButtonState",Fishing?"Fishing":"Interaction"),"autoPlay",J.Obj("IsAutoPlaying",false),"autoTravel",J.Obj("IsAutoTraveling",false));
+        else if(cmd=="get_music_scores"||cmd=="get_instruments"||cmd=="change_instrument"||cmd=="play_music_score")return Music.Call(cmd,body);
+        else if(cmd=="get_activity")d=J.Obj("Performance",Music.Performance(),"Dungeon",J.Obj("State",Dungeon),"combatState",J.Obj("IsInCombat",false),"Mode",J.Obj("MainButtonState",Fishing?"Fishing":"Interaction"),"autoPlay",J.Obj("IsAutoPlaying",false),"autoTravel",J.Obj("IsAutoTraveling",false));
         else if(cmd=="get_inventory")d=J.Obj("CurrentInventoryWeightAsDecimal",38.5,"MaxInventoryWeightAsDecimal",100);
         else if(cmd=="get_items")d=Counts.Select(x=>J.Obj("DisplayName",x.Key,"Count",x.Value,"Location","inventory","CategoryDisplayName","재료","IsLocked",false)).ToArray();
         else if(cmd=="get_altering_works")d=J.Obj("works",Works.ToArray(),"completedCount",Works.Count(x=>J.B(x,"IsCompleted")));
@@ -220,7 +224,7 @@ public class DemoBridge : IBridge {
         else if(cmd=="complete_altering_work"&&RejectCollection)d=J.Obj("status","rejected","body",J.Obj("error","blocked"));
         else if(cmd=="complete_altering_work"){var w=Works.FirstOrDefault(x=>J.S(x,"DisplayName")==n&&J.B(x,"IsCompleted"));if(w!=null){string f=J.S(w,"FacilityName");foreach(var a in Works.Where(x=>J.S(x,"FacilityName")==f&&J.B(x,"IsCompleted")).ToList()){string name=J.S(a,"DisplayName");if(!Counts.ContainsKey(name))Counts[name]=0;Counts[name]+=5;Works.Remove(a);}}d=J.Obj("status","accepted","body",J.Obj("collected",1));}
         else if(cmd=="execute_gathering"){if(n=="연어")Fishing=true;else {if(!Counts.ContainsKey(n))Counts[n]=0;Counts[n]+=100;}d=J.Obj("status","accepted","body",J.Obj("result",Fishing?"fishing_started":"completed"));}
-        else if(cmd=="stop_action"){Fishing=false;d=J.Obj("status","accepted");}
+        else if(cmd=="stop_action"){Fishing=false;Music.Playing=false;d=J.Obj("status","accepted");}
         else d=J.Obj("error","unsupported_command");
         return Task.FromResult(new Reply{Data=d,ExitCode=0});
     }

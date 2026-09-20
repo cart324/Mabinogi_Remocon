@@ -47,6 +47,11 @@ public static class FriendlyText {
         {"not_available_on_combat","전투 중에는 실행할 수 없습니다."},
         {"not_available_on_dead","캐릭터가 쓰러진 상태에서는 실행할 수 없습니다."},
         {"not_available_on_riding","탑승 중에는 실행할 수 없습니다."},
+        {"no_instrument","장착한 악기가 없습니다. 사용할 악기를 선택하세요."},
+        {"is_playing_instrument","연주 중에는 악기를 바꿀 수 없습니다."},
+        {"invalid_target","선택한 악기를 장착할 수 없습니다."},
+        {"failed_unequip","기존 장비를 해제하지 못했습니다. 게임의 장비 상태를 확인하세요."},
+        {"system_error","게임이 작업을 처리하지 못했습니다. 현재 상태를 확인하세요."},
         {"level_requirement","필요한 레벨에 도달하지 않았습니다."},
         {"rate_limited","요청이 너무 많습니다. 잠시 후 다시 시도하세요."}
     };

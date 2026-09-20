@@ -24,7 +24,7 @@ public partial class MainForm : Form {
     static readonly Color Ink=Color.FromArgb(28,45,50), Accent=Color.FromArgb(15,109,101), Canvas=Color.FromArgb(243,247,247);
     public MainForm(bool demoMode,bool previewMode){
         demo=demoMode;preview=previewMode;cfg=demo?new Settings():Storage.Load();
-        if(demo){cfg.Goals.Add(new Goal{Name="목재",Product="목재",Target=100});cfg.Goals.Add(new Goal{Name="옷감",Product="옷감",Mode="unlimited"});cfg.Stocks.Add(new StockGoal{Name="통나무",Target=300});cfg.FishName="연어";}
+        if(demo){cfg.Playlist.Add(new PlaylistEntry{Title="악보: 첫 곡",Instrument="하프"});cfg.Playlist.Add(new PlaylistEntry{Title="악보: 두 번째 곡",Instrument="피아노"});cfg.Goals.Add(new Goal{Name="목재",Product="목재",Target=100});cfg.Goals.Add(new Goal{Name="옷감",Product="옷감",Mode="unlimited"});cfg.Stocks.Add(new StockGoal{Name="통나무",Target=300});cfg.FishName="연어";}
         bridge=demo?(IBridge)new DemoBridge():(IBridge)new GameBridge(cfg.CliPath);
         if(demo){var db=(DemoBridge)bridge;db.Works.Add(J.Obj("DisplayName","목재","FacilityName","목재 가공 시설","State","Completed","IsCompleted",true,"RemainingSeconds",0));db.Works.Add(J.Obj("DisplayName","목재","FacilityName","목재 가공 시설","State","InProgress","IsCompleted",false,"RemainingSeconds",750));db.Works.Add(J.Obj("DisplayName","옷감","FacilityName","옷감 가공 시설","State","InProgress","IsCompleted",false,"RemainingSeconds",1800));}
         Text="에린 리모컨 "+Updates.CurrentVersion+(demo?" · 데모":""); Width=1220;Height=840;MinimumSize=new Size(1020,720);StartPosition=FormStartPosition.CenterScreen;
@@ -53,9 +53,9 @@ public partial class MainForm : Form {
         var controls=Bar();controls.Dock=DockStyle.Fill;
         startButton=Button("자동화 시작",StartAutomation,true);pauseButton=Button("예약 일시정지",async()=>await PauseUser());stopButton=Button("중지",async()=>await StopOwned());
         controls.Controls.Add(startButton);controls.Controls.Add(pauseButton);controls.Controls.Add(stopButton);controls.Controls.Add(Button("새로고침",async()=>{if(!busy)await Poll(true);}));root.Controls.Add(controls,0,2);
-        tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",10);root.Controls.Add(tabs,0,3);
+        tabs.Multiline=true;tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",10);root.Controls.Add(tabs,0,3);
         var footer=Bar();footer.Dock=DockStyle.Top;planLabel=Label("자동화 OFF · 버튼을 눌러야 게임 작업을 실행합니다.",9);refreshLabel=Label("",9);footer.Controls.Add(planLabel);footer.Controls.Add(refreshLabel);root.Controls.Add(footer,0,4);
-        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildLandmarks();BuildSettings();BuildUpdates();BuildRoutes();
+        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildLandmarks();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();
     }
     Label Card(TableLayoutPanel host,int col,string title,string value){var p=new Panel{Dock=DockStyle.Fill,BackColor=Color.White,Margin=new Padding(4)};var top=new Label{Text=title,AutoSize=true,Location=new Point(10,8),ForeColor=Color.FromArgb(83,111,112)};var val=new Label{Text=value,Location=new Point(10,34),Size=new Size(340,34),Anchor=AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right,Font=new Font("맑은 고딕",12,FontStyle.Bold),TextAlign=ContentAlignment.TopLeft};p.Controls.Add(top);p.Controls.Add(val);host.Controls.Add(p,col,0);return val;}
     void BuildFacilities(){
@@ -83,7 +83,7 @@ public partial class MainForm : Form {
     void ProcessFolder(string path){System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path){UseShellExecute=true});}
     void ChooseCli(){if(!CanEdit())return;using(var d=new OpenFileDialog{Filter="게임 CLI|MabinogiMobile_CLI.exe|실행 파일|*.exe",FileName="MabinogiMobile_CLI.exe"}){if(d.ShowDialog(this)!=DialogResult.OK)return;cfg.CliPath=d.FileName;if(!demo)bridge=new GameBridge(cfg.CliPath);hasCatalog=false;connected=false;connectionIssue="연결 확인 중";cliLabel.Text="CLI: "+cfg.CliPath;Save();nextPoll=DateTime.MinValue;}}
     T Selected<T>(DataGridView grid) where T:class {return grid.SelectedRows.Count==0?null:grid.SelectedRows[0].Tag as T;}
-    bool CanEdit(){if(auto||busy){Notice("자동화 또는 진행 중인 작업을 멈춘 뒤 변경하세요.","설정 변경");return false;}return true;}
+    bool CanEdit(){if(auto||busy||MusicActive){Notice("주크박스·자동화 또는 진행 중인 작업을 멈춘 뒤 변경하세요.","설정 변경");return false;}return true;}
     string UserError(Exception ex){Log("오류 상세: "+ex.Message);return FriendlyText.Error(ex);}
     void Notice(string message,string title="안내"){planLabel.Text=title+" · "+message;planLabel.ForeColor=Color.Firebrick;Log(title+" · "+message);}
     void Save(){if(demo||preview)return;try{Storage.Save(cfg);}catch(Exception ex){Log("설정 저장 실패: "+ex.Message);}}
