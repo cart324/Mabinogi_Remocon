@@ -817,6 +817,101 @@
           "Count": 4
         }
       ]
+    },
+    {
+      "Name": "숨숨꽃 가루",
+      "Product": "숨숨꽃 가루",
+      "ProducedPerWork": 5,
+      "Ingredients": [
+        {
+          "Material": "숨숨꽃",
+          "Count": 20
+        }
+      ]
+    },
+    {
+      "Name": "상급 옷감+",
+      "Product": "상급 옷감+",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 옷감",
+          "Count": 4
+        },
+        {
+          "Material": "상급 양털+",
+          "Count": 20
+        },
+        {
+          "Material": "양털",
+          "Count": 12
+        }
+      ]
+    },
+    {
+      "Name": "최상급 옷감",
+      "Product": "최상급 옷감",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "상급 옷감+",
+          "Count": 5
+        },
+        {
+          "Material": "최상급 양털",
+          "Count": 20
+        },
+        {
+          "Material": "양털",
+          "Count": 16
+        }
+      ],
+      "AlternateIngredients": [
+        [
+          {
+            "Material": "두꺼운 양털",
+            "Count": 40
+          },
+          {
+            "Material": "최상급 양털",
+            "Count": 20
+          },
+          {
+            "Material": "양털",
+            "Count": 16
+          }
+        ]
+      ]
+    },
+    {
+      "Name": "최상급 실크",
+      "Product": "최상급 실크",
+      "ProducedPerWork": 2,
+      "Ingredients": [
+        {
+          "Material": "상급 실크",
+          "Count": 4
+        },
+        {
+          "Material": "최상급 거미줄",
+          "Count": 20
+        },
+        {
+          "Material": "튼튼 버섯 진액",
+          "Count": 16
+        }
+      ]
+    },
+    {
+      "Name": "식물 섬유",
+      "Product": "식물 섬유",
+      "ProducedPerWork": 10,
+      "Ingredients": [
+        {
+          "Material": "긴 줄기",
+          "Count": 150
+        }
+      ]
     }
   ]
 }

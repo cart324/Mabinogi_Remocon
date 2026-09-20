@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 namespace MabiRemote {
 public class RecipeIngredient {public string Material{get;set;} public int Count{get;set;} }
-public class RecipeDefinition {public string Name{get;set;} public string Product{get;set;} public int ProducedPerWork{get;set;} public List<RecipeIngredient> Ingredients{get;set;} public RecipeDefinition(){Ingredients=new List<RecipeIngredient>();} }
+public class RecipeDefinition {public string Name{get;set;} public string Product{get;set;} public int ProducedPerWork{get;set;} public List<RecipeIngredient> Ingredients{get;set;} public List<List<RecipeIngredient>> AlternateIngredients{get;set;} public RecipeDefinition(){Ingredients=new List<RecipeIngredient>();} }
 public class RecipeFile {public int Version{get;set;} public List<RecipeDefinition> Recipes{get;set;} public RecipeFile(){Version=1;} }
 public static class RecipeBook {
     public static void AddMissingDefaults(Settings cfg){foreach(var definition in Defaults())if(!cfg.RecipeDefinitions.Any(x=>x.Name==definition.Name))cfg.RecipeDefinitions.Add(definition);}
