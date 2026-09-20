@@ -1,4 +1,4 @@
-{
+﻿{
   "Version": 1,
   "Recipes": [
     {
@@ -800,6 +800,21 @@
         {
           "Material": "물이 든 병",
           "Count": 1
+        }
+      ]
+    },
+    {
+      "Name": "밧줄",
+      "Product": "밧줄",
+      "ProducedPerWork": 3,
+      "Ingredients": [
+        {
+          "Material": "식물 섬유",
+          "Count": 45
+        },
+        {
+          "Material": "밀랍",
+          "Count": 4
         }
       ]
     }

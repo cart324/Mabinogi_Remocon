@@ -25,6 +25,9 @@ class RetryStopBridge:IBridge {
         Stops++;return Task.FromResult(new Reply{Data=Stops<3?J.Obj("status","rejected","body",J.Obj("error","invalid_state")):J.Obj("status","accepted")});
     }
 }
+class TimeoutActionBridge:IBridge {
+    public Task<Reply> Call(string command,object body){return Task.FromResult(new Reply{Data=J.Obj("status","accepted","body",J.Obj("error","timeout"))});}
+}
 class ClosingChecks {
     static void Set(object f,string key,object val){typeof(MainForm).GetField(key,BindingFlags.NonPublic|BindingFlags.Instance).SetValue(f,val);}
     static void Assert(bool value,string text){if(!value)throw new Exception(text);}
@@ -100,5 +103,28 @@ class ClosingChecks {
         Assert(FriendlyText.DisplayName("목재+ * 별 ★")=="목재+ * 별 ★","literal name damaged");
         Console.WriteLine("PASS numeric editor 3000 and display-only color tag removal");
     }
-    [STAThread]static int Main(){try{RetryChecks().GetAwaiter().GetResult();GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();EditorChecks();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
+    static void StartRecoveryChecks(){
+        using(var f=new MainForm(true,true)){
+            Set(f,"bridge",new TimeoutActionBridge());Set(f,"connected",true);Set(f,"auto",true);
+            var run=typeof(MainForm).GetMethod("RunPlan",BindingFlags.NonPublic|BindingFlags.Instance);
+            var task=(Task<bool>)run.Invoke(f,new object[]{new Plan("execute_gathering","통나무","test",5),0});Assert(!task.GetAwaiter().GetResult(),"timeout result");
+            Assert(!(bool)typeof(MainForm).GetField("actionOwned",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(f),"owned action stuck after timeout");
+            Set(f,"busy",true);Set(f,"polling",true);
+            typeof(MainForm).GetMethod("StartAutomation",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(f,null);
+            Assert((bool)typeof(MainForm).GetField("startRequested",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(f),"start click lost during read-only poll after timeout");
+            typeof(MainForm).GetMethod("Pause",BindingFlags.NonPublic|BindingFlags.Instance).Invoke(f,new object[]{"cancel"});
+            Assert(!(bool)typeof(MainForm).GetField("startRequested",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(f),"pending start not cancelled");
+        }
+        Console.WriteLine("PASS timeout releases action and restart click is queued during polling");
+    }
+    static void BagAlertChecks(){
+        using(var f=new MainForm(true,true)){
+            var check=typeof(MainForm).GetMethod("CheckBagWeight",BindingFlags.NonPublic|BindingFlags.Instance);var flag=typeof(MainForm).GetField("bagWasOverweight",BindingFlags.NonPublic|BindingFlags.Instance);var cfg=(Settings)typeof(MainForm).GetField("cfg",BindingFlags.NonPublic|BindingFlags.Instance).GetValue(f);
+            check.Invoke(f,new object[]{new Snapshot{Inventory=J.Obj("CurrentInventoryWeight",100,"MaxInventoryWeight",100)}});Assert(!(bool)flag.GetValue(f),"exact 100 percent alerted");
+            check.Invoke(f,new object[]{new Snapshot{Inventory=J.Obj("CurrentInventoryWeight",101,"MaxInventoryWeight",100)}});Assert((bool)flag.GetValue(f),"overweight not alerted");
+            cfg.BagOverweightNotifications=false;check.Invoke(f,new object[]{new Snapshot{Inventory=J.Obj("CurrentInventoryWeight",101,"MaxInventoryWeight",100)}});Assert(!(bool)flag.GetValue(f),"disabled overweight alert");
+        }
+        Console.WriteLine("PASS bag overweight notification strict threshold and toggle");
+    }
+    [STAThread]static int Main(){try{RetryChecks().GetAwaiter().GetResult();GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();BagAlertChecks();StartRecoveryChecks();EditorChecks();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
 }

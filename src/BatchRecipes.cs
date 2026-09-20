@@ -8,6 +8,7 @@ public class RecipeIngredient {public string Material{get;set;} public int Count
 public class RecipeDefinition {public string Name{get;set;} public string Product{get;set;} public int ProducedPerWork{get;set;} public List<RecipeIngredient> Ingredients{get;set;} public RecipeDefinition(){Ingredients=new List<RecipeIngredient>();} }
 public class RecipeFile {public int Version{get;set;} public List<RecipeDefinition> Recipes{get;set;} public RecipeFile(){Version=1;} }
 public static class RecipeBook {
+    public static void AddMissingDefaults(Settings cfg){foreach(var definition in Defaults())if(!cfg.RecipeDefinitions.Any(x=>x.Name==definition.Name))cfg.RecipeDefinitions.Add(definition);}
     public static List<RecipeDefinition> Defaults(){return J.Serializer().Deserialize<RecipeFile>(Program.ReadEmbedded("recipes.json")).Recipes;}
     public static List<RecipeDefinition> Import(string json){
         if(json==null||json.Length>1024*1024)throw new InvalidDataException("배합표 파일이 너무 큽니다.");

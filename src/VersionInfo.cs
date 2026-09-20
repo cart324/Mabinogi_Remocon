@@ -1,4 +1,4 @@
 ﻿using System.Reflection;
-[assembly: AssemblyVersion("2.0.11.0")]
-[assembly: AssemblyFileVersion("2.0.11.0")]
+[assembly: AssemblyVersion("2.0.12.0")]
+[assembly: AssemblyFileVersion("2.0.12.0")]
 [assembly: AssemblyProduct("에린 리모컨")]

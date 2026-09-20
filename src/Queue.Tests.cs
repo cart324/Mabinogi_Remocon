@@ -24,7 +24,7 @@ public static class QueueTests {
         Assert(!Planner.ShouldInterruptForCollection(s,c),"missing sap must not interrupt");Count(s,"나무 진액",4);
         Assert(Planner.ShouldInterruptForCollection(s,c),"collected wood plus owned sap should allow refill");
         goal.RunsDone=3;Assert(!Planner.ShouldInterruptForCollection(s,c),"finished goal must not interrupt");goal.RunsDone=0;
-        s.Works.Add(J.Obj("DisplayName","목재","FacilityName",Facilities.Names[1],"IsCompleted",false));Assert(!Planner.ShouldInterruptForCollection(s,c),"partial queue must not interrupt gathering");
+        s.Works.Add(J.Obj("DisplayName","목재","FacilityName",Facilities.Names[1],"IsCompleted",false));Assert(!Planner.ShouldInterruptForCollection(s,c),"partial queue must not interrupt gathering");Assert(Planner.Next(s,c,false,false,new Dictionary<string,DateTime>(),DateTime.UtcNow)==null,"startup collected partial queue");
         s.Works.RemoveAt(1);Count(s,"나무 진액",0);s.Activity=J.Obj("IsInCombat",false,"Dungeon",J.Obj("State","NotInDungeon"),"Mode",J.Obj("MainButtonState","Fishing"));
         Assert(Planner.Next(s,c,false,true,new Dictionary<string,DateTime>(),DateTime.UtcNow)==null,"collection without refill must not stop owned fishing");
     }

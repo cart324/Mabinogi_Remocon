@@ -53,7 +53,7 @@ public partial class MainForm {
         if(activityWatchLabel!=null)activityWatchLabel.Text=trace+(battle&&cfg.HuntingNotifications&&fresh.Quests==null?" · 사냥 목표 조회 실패":"");
         if(trace!=lastActivityTrace){Log("활동 상태: "+trace);lastActivityTrace=trace;}
         foreach(var notice in completionWatch.Observe(fresh)){
-            if((notice.Kind=="dungeon"&&cfg.DungeonNotifications)||(notice.Kind=="hunting"&&cfg.HuntingNotifications))Notify(notice.Title,notice.Text);
+            if((notice.Kind=="dungeon"&&cfg.DungeonNotifications)||(notice.Kind=="hunting"&&cfg.HuntingNotifications))QueueCompletionNotice(notice);
         }
     }
 }

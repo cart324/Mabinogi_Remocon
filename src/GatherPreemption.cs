@@ -86,6 +86,8 @@ public partial class MainForm {
         var items=await bridge.Call("get_items",null);items.Check();
         if(closing||generation!=stamp||!active())return null;
         var fresh=new Snapshot{At=DateTime.UtcNow,Items=J.Rows(J.Unwrap(items.Data)),Recipes=snap.Recipes,Gatherables=snap.Gatherables};
+        var inventory=await bridge.Call("get_inventory",null);inventory.Check();if(closing||generation!=stamp||!active())return null;fresh.Inventory=J.Unwrap(inventory.Data);
+        CheckBlackLumps(fresh.Items);CheckBagWeight(fresh);
         if(plan.GatherTarget>0&&fresh.Count(plan.Name,cfg.CountStorage)>=plan.GatherTarget)return plan.Name+" 목표 재고 도달 · 채집을 중단하고 계획을 다시 확인합니다.";
         var works=await bridge.Call("get_altering_works",null);works.Check();fresh.Works=J.Rows(J.Get(J.Unwrap(works.Data),"works"));
         if(closing||generation!=stamp||!active())return null;

@@ -47,6 +47,9 @@ public class Settings {
     public List<RecipeDefinition> RecipeDefinitions{get;set;}
     public List<RoutePreset> Routes{get;set;}
     public Dictionary<string,string> MaterialRoutes{get;set;}
+    public bool BagOverweightNotifications{get;set;}
+    public bool BlackLumpNotifications{get;set;}
+    public int BlackLumpLimit{get;set;}
     public bool AutoCheckUpdates{get;set;}
     public bool ArrivalNotifications{get;set;}
     public bool DungeonNotifications{get;set;}
@@ -61,7 +64,7 @@ public class Settings {
     public string FishName{get;set;}
     public Dictionary<string,int> FacilitySlots{get;set;}
     public Dictionary<string,string> RecipeFacilities{get;set;}
-    public Settings(){Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
+    public Settings(){BagOverweightNotifications=true;BlackLumpNotifications=true;BlackLumpLimit=60;Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
 }
 public static class Facilities {
     public static readonly string[] Names={"금속 가공 시설","목재 가공 시설","옷감 가공 시설","가죽 가공 시설","약품 가공 시설","식재료 가공 시설"};
@@ -103,7 +106,7 @@ public static class Storage {
     public static string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"MabiRemote");
     public static string LastLoadWarning="";
     public static void Save(Settings s){ Directory.CreateDirectory(Root); string file=Path.Combine(Root,"settings.json"), temp=file+".tmp"; File.WriteAllText(temp,J.Json(s),new UTF8Encoding(false)); if(File.Exists(file))File.Replace(temp,file,file+".bak");else File.Move(temp,file); }
-    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.Playlist==null)s.Playlist=new List<PlaylistEntry>();s.Playlist=s.Playlist.Where(x=>x!=null&&!String.IsNullOrWhiteSpace(x.Title)).ToList();if(s.RecipeDefinitions==null)s.RecipeDefinitions=RecipeBook.Defaults();if(s.Routes==null)s.Routes=new List<RoutePreset>();if(s.MaterialRoutes==null)s.MaterialRoutes=new Dictionary<string,string>();if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();if(!UiSizing.Options.Contains(s.UiScale))s.UiScale=100;s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
+    public static Settings Load(){try{string p=Path.Combine(Root,"settings.json");if(File.Exists(p)){var s=J.Serializer().Deserialize<Settings>(File.ReadAllText(p,Encoding.UTF8));if(s==null || s.Goals==null || s.Stocks==null || s.Landmarks==null || s.Icons==null)throw new Exception("설정 형식 오류");if(s.Playlist==null)s.Playlist=new List<PlaylistEntry>();s.Playlist=s.Playlist.Where(x=>x!=null&&!String.IsNullOrWhiteSpace(x.Title)).ToList();if(s.RecipeDefinitions==null)s.RecipeDefinitions=RecipeBook.Defaults();RecipeBook.AddMissingDefaults(s);if(s.Routes==null)s.Routes=new List<RoutePreset>();if(s.MaterialRoutes==null)s.MaterialRoutes=new Dictionary<string,string>();if(s.FacilitySlots==null)s.FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);if(s.RecipeFacilities==null)s.RecipeFacilities=new Dictionary<string,string>();if(!UiSizing.Options.Contains(s.UiScale))s.UiScale=100;s.FullPercent=Math.Max(50,Math.Min(100,s.FullPercent));s.BlackLumpLimit=Math.Max(0,Math.Min(1000000,s.BlackLumpLimit));return s;}}catch(Exception ex){LastLoadWarning="설정을 읽지 못해 기본 설정으로 열었습니다: "+ex.Message;} return new Settings();}
 }
 public static class ConnectionStatus {
     public static string Disconnected(object status){switch(J.S(status,"reason")){
@@ -127,7 +130,8 @@ public class GameBridge : IBridge, IDisposable {
             string args=command;
             if(body!=null){string text=body as string ?? J.Json(body);args+=" base64:"+Convert.ToBase64String(Encoding.UTF8.GetBytes(text));}
             var si=new ProcessStartInfo(CliPath,args){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8,WorkingDirectory=Path.GetDirectoryName(CliPath)};
-            using(var p=new Process()){p.StartInfo=si;lock(processGate){if(disposed)throw new ObjectDisposedException("GameBridge");p.Start();activeProcesses.Add(p);}try{var output=p.StandardOutput.ReadToEndAsync();var err=p.StandardError.ReadToEndAsync();string text=await output;string stderr=await err;p.WaitForExit();object data;
+            using(var p=new Process()){p.StartInfo=si;lock(processGate){if(disposed)throw new ObjectDisposedException("GameBridge");p.Start();activeProcesses.Add(p);}try{var output=p.StandardOutput.ReadToEndAsync();var err=p.StandardError.ReadToEndAsync();if((command=="status"||command=="capabilities"||command.StartsWith("get_"))&&await Task.WhenAny(output,Task.Delay(15000))!=output){try{if(!p.HasExited)p.Kill();}catch(InvalidOperationException){}await output;await err;throw new GameCommandException("게임 상태 조회가 15초 동안 응답하지 않았습니다. 연결을 확인한 뒤 다시 시작하세요.","Read-only CLI timeout: "+command);}
+                string text=await output;string stderr=await err;p.WaitForExit();object data;
                 try{data=J.Parse(text.Trim().TrimStart('\uFEFF'));}catch{throw new GameCommandException("게임 응답을 읽지 못했습니다. 게임 연결 상태를 확인하세요.","CLI 응답이 JSON이 아닙니다: "+text.Substring(0,Math.Min(300,text.Length)));}
                 return new Reply{ExitCode=p.ExitCode,Data=data,Stderr=stderr};
             }finally{lock(processGate){activeProcesses.Remove(p);}}}
@@ -192,6 +196,7 @@ public static class Planner {
 
     public static bool CanRefillAfterCollection(Snapshot s,Settings cfg,string facility){
         var completed=s.Works.Where(w=>J.S(w,"FacilityName")==facility&&J.B(w,"IsCompleted")).ToList();
+        if(s.Works.Any(w=>J.S(w,"FacilityName")==facility&&!J.B(w,"IsCompleted")))return false;
         if(completed.Count==0)return false;
         var after=new Snapshot{At=s.At,Activity=s.Activity,Inventory=s.Inventory,Environment=s.Environment,Recipes=s.Recipes,Gatherables=s.Gatherables,Items=new List<object>(s.Items),Works=s.Works.Except(completed).ToList()};
         foreach(var w in completed){string name=J.S(w,"DisplayName");var definition=RecipeBook.Find(cfg,name);string product=definition==null?name:definition.Product;var recipe=s.Recipes.FirstOrDefault(r=>J.S(r,"DisplayName")==name);double amount=recipe==null?(definition==null?0:definition.ProducedPerWork):J.N(recipe,"ProducedPerWork");if(amount>0)after.Items.Add(J.Obj("DisplayName",product,"Count",amount,"Location","inventory"));}
@@ -208,7 +213,7 @@ public static class Planner {
     public static Plan Next(Snapshot s,Settings cfg,bool fish,bool ownsFishing,Dictionary<string,DateTime> cooldown,DateTime now){
         if(s.At==DateTime.MinValue || (now-s.At).TotalSeconds>45 || s.Full(cfg.FullPercent)||s.Busy(ownsFishing))return null;
         Func<string,bool> ready=key=>!cooldown.ContainsKey(key)||cooldown[key]<=now;
-        var done=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&ready("complete_altering_work:"+J.S(x,"DisplayName")));
+        var done=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&!s.Works.Any(w=>J.S(w,"FacilityName")==J.S(x,"FacilityName")&&!J.B(w,"IsCompleted"))&&ready("complete_altering_work:"+J.S(x,"DisplayName")));
         if(done!=null){var priority=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&ready("complete_altering_work:"+J.S(x,"DisplayName"))&&CanRefillAfterCollection(s,cfg,J.S(x,"FacilityName")));if(priority!=null)return new Plan("complete_altering_work",J.S(priority,"DisplayName"),J.S(priority,"FacilityName")+" 수령 후 재등록",0);}
         // Search every goal for ready work before starting any material gathering.
         for(int phase=0;phase<3;phase++)foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
