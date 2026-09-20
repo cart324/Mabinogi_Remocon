@@ -13,7 +13,21 @@ public static class GatherPreemption {
         bool ready=false;if(facilities.Count>0){var reply=await bridge.Call("get_altering_works",null);reply.Check();ready=Ready(J.Rows(J.Get(J.Unwrap(reply.Data),"works")),facilities);}
         if(observe!=null)await observe();return ready;
     }
-    public static async Task<GatherWaitResult> Wait(IBridge bridge,Task<Reply> pending,HashSet<string> facilities,Func<bool> allowed,Func<Task> stop,int interval=2000,Action<string> warning=null,int maxDurationMs=300000,Func<Task> observe=null,Action<string> reason=null){
+    public static async Task<GatherWaitResult> Wait(IBridge bridge,Task<Reply> pending,HashSet<string> facilities,Func<bool> allowed,Func<Task> stop,int interval=2000,Action<string> warning=null,int maxDurationMs=300000,Func<Task> observe=null,Action<string> reason=null,Func<Task<string>> inventoryDecision=null){
+        if(inventoryDecision!=null){
+            bool stopped=false;
+            while(!pending.IsCompleted&&allowed()){
+                if(await Task.WhenAny(pending,Task.Delay(interval))==pending||!allowed())break;
+                var query=inventoryDecision();
+                if(await Task.WhenAny(pending,query)!=query){ObserveLate(query);break;}
+                string decision=null;try{decision=await query;}catch(Exception ex){if(warning!=null)warning(ex.Message);}
+                if(pending.IsCompleted||!allowed())break;
+                if(String.IsNullOrEmpty(decision))continue;
+                if(reason!=null)reason(decision);
+                try{await stop();stopped=true;}catch(Exception ex){if(warning!=null)warning(ex.Message);}break;
+            }
+            return new GatherWaitResult{Reply=await pending,Interrupted=stopped};
+        }
         bool interrupted=false;var clock=System.Diagnostics.Stopwatch.StartNew();
         while(!pending.IsCompleted&&allowed()){
             int remaining=Math.Max(1,maxDurationMs-(int)clock.ElapsedMilliseconds);
@@ -45,6 +59,16 @@ public partial class MainForm {
         if(closing||!actionOwned||generation!=stamp||!active())return;
         snap.Environment=J.Unwrap(environment.Data);snap.Activity=J.Unwrap(activity.Data);snap.ActivityAt=DateTime.UtcNow;
         UpdateLiveLabels();
+    }
+    async Task<string> CheckGatherInventory(Plan plan,int stamp,Func<bool> active){
+        var items=await bridge.Call("get_items",null);items.Check();
+        if(closing||generation!=stamp||!active())return null;
+        var fresh=new Snapshot{At=DateTime.UtcNow,Items=J.Rows(J.Unwrap(items.Data)),Recipes=snap.Recipes,Gatherables=snap.Gatherables};
+        if(plan.GatherTarget>0&&fresh.Count(plan.Name,cfg.CountStorage)>=plan.GatherTarget)return plan.Name+" 목표 재고 도달 · 채집을 중단하고 계획을 다시 확인합니다.";
+        var works=await bridge.Call("get_altering_works",null);works.Check();fresh.Works=J.Rows(J.Get(J.Unwrap(works.Data),"works"));
+        if(closing||generation!=stamp||!active())return null;
+        if(Planner.ShouldInterruptForCollection(fresh,cfg))return "가공 완료 및 재등록 재료 확보 · 채집을 중단하고 수령합니다.";
+        await ObserveGatherActivity(stamp,active);return null;
     }
     async Task StopGatherForCollection(){
         stopping=true;

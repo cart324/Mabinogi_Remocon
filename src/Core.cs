@@ -190,11 +190,26 @@ public static class Planner {
         return null;
     }
 
+    public static bool CanRefillAfterCollection(Snapshot s,Settings cfg,string facility){
+        var completed=s.Works.Where(w=>J.S(w,"FacilityName")==facility&&J.B(w,"IsCompleted")).ToList();
+        if(completed.Count==0)return false;
+        var after=new Snapshot{At=s.At,Activity=s.Activity,Inventory=s.Inventory,Environment=s.Environment,Recipes=s.Recipes,Gatherables=s.Gatherables,Items=new List<object>(s.Items),Works=s.Works.Except(completed).ToList()};
+        foreach(var w in completed){string name=J.S(w,"DisplayName");var definition=RecipeBook.Find(cfg,name);string product=definition==null?name:definition.Product;var recipe=s.Recipes.FirstOrDefault(r=>J.S(r,"DisplayName")==name);double amount=recipe==null?(definition==null?0:definition.ProducedPerWork):J.N(recipe,"ProducedPerWork");if(amount>0)after.Items.Add(J.Obj("DisplayName",product,"Count",amount,"Location","inventory"));}
+        after.Recipes=s.Recipes.Select(r=>{var copy=J.Serializer().Deserialize<Dictionary<string,object>>(J.Json(r));var definition=RecipeBook.Find(cfg,J.S(r,"DisplayName"));if(definition!=null&&J.S(r,"Reason")=="not_enough_ingredient"&&definition.Ingredients.All(i=>after.Count(i.Material,cfg.CountStorage)>=i.Count))copy["Alterable"]=true;return (object)copy;}).ToList();
+        Func<string,bool> ready=key=>key.StartsWith("execute_altering:")&&Facilities.ForRecipe(cfg,key.Substring("execute_altering:".Length))==facility;
+        foreach(var goal in cfg.Goals.Where(g=>g.Enabled)){
+            int batch=BatchRuns(after,cfg,goal,true);if(batch<=0)continue;
+            var plan=Recipe(after,cfg,goal.Name,Product(goal),batch,ready,new HashSet<string>(),true,true,goal.AutoReplenish);
+            if(plan!=null)return true;
+        }
+        return false;
+    }
+    public static bool ShouldInterruptForCollection(Snapshot s,Settings cfg){return s.Works.GroupBy(w=>J.S(w,"FacilityName")).Any(g=>g.All(w=>J.B(w,"IsCompleted"))&&CanRefillAfterCollection(s,cfg,g.Key));}
     public static Plan Next(Snapshot s,Settings cfg,bool fish,bool ownsFishing,Dictionary<string,DateTime> cooldown,DateTime now){
         if(s.At==DateTime.MinValue || (now-s.At).TotalSeconds>45 || s.Full(cfg.FullPercent)||s.Busy(ownsFishing))return null;
         Func<string,bool> ready=key=>!cooldown.ContainsKey(key)||cooldown[key]<=now;
         var done=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&ready("complete_altering_work:"+J.S(x,"DisplayName")));
-        if(done!=null)return new Plan("complete_altering_work",J.S(done,"DisplayName"),J.S(done,"FacilityName")+" 완료 가공물 수령",0);
+        if(done!=null){var priority=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&ready("complete_altering_work:"+J.S(x,"DisplayName"))&&CanRefillAfterCollection(s,cfg,J.S(x,"FacilityName")));if(priority!=null)return new Plan("complete_altering_work",J.S(priority,"DisplayName"),J.S(priority,"FacilityName")+" 수령 후 재등록",0);}
         // Search every goal for ready work before starting any material gathering.
         for(int phase=0;phase<3;phase++)foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
             if(!ready("execute_altering:"+g.Name)||(phase>0&&!g.AutoReplenish))continue;
@@ -212,8 +227,9 @@ public static class Planner {
         foreach(var g in cfg.Stocks.Where(x=>x.Gather&&x.Target>0)){
             if(s.Count(g.Name,cfg.CountStorage)>=g.Target||!ready("execute_gathering:"+g.Name))continue;
             var item=s.Gatherables.FirstOrDefault(x=>J.S(x,"DisplayName")==g.Name);
-            if(item!=null&&J.B(item,"ToolOk"))return new Plan("execute_gathering",g.Name,"목표 재고 부족 · 최대 100개 단위 채집",5);
+            if(item!=null&&J.B(item,"ToolOk"))return new Plan("execute_gathering",g.Name,"목표 재고 부족 · 최대 100개 단위 채집",5){GatherTarget=g.Target};
         }
+        if(done!=null&&!ownsFishing)return new Plan("complete_altering_work",J.S(done,"DisplayName"),J.S(done,"FacilityName")+" 여유 시간 완료품 수령",0);
         if(fish && !ownsFishing && !String.IsNullOrWhiteSpace(cfg.FishName) && ready("execute_gathering:"+cfg.FishName)){
             var item=s.Gatherables.FirstOrDefault(x=>J.S(x,"DisplayName")==cfg.FishName);
             if(item!=null&&J.B(item,"ToolOk"))return new Plan("execute_gathering",cfg.FishName,"빈 시간 자동 낚시",5);

@@ -18,6 +18,16 @@ public static class QueueTests {
         c.Goals.Add(new Goal{Name="목재",Mode="runs",Target=1});Count(s,"통나무",10);Assert(Next(s,c).Name=="목재","independent goal incorrectly disabled");
         var saved=J.Serializer().Deserialize<Settings>(J.Json(c));Assert(!saved.Goals[0].AutoReplenish&&saved.Goals[1].AutoReplenish,"per-goal persistence");
     }
+    public static void CollectionPriority(){
+        var c=new Settings();var s=Sample();var goal=new Goal{Name="목재+",Mode="runs",Target=3,AutoReplenish=false};c.Goals.Add(goal);Recipe(s,c,"목재+");Recipe(s,c,"목재");
+        s.Works.Add(J.Obj("DisplayName","목재","FacilityName",Facilities.Names[1],"IsCompleted",true));
+        Assert(!Planner.ShouldInterruptForCollection(s,c),"missing sap must not interrupt");Count(s,"나무 진액",4);
+        Assert(Planner.ShouldInterruptForCollection(s,c),"collected wood plus owned sap should allow refill");
+        goal.RunsDone=3;Assert(!Planner.ShouldInterruptForCollection(s,c),"finished goal must not interrupt");goal.RunsDone=0;
+        s.Works.Add(J.Obj("DisplayName","목재","FacilityName",Facilities.Names[1],"IsCompleted",false));Assert(!Planner.ShouldInterruptForCollection(s,c),"partial queue must not interrupt gathering");
+        s.Works.RemoveAt(1);Count(s,"나무 진액",0);s.Activity=J.Obj("IsInCombat",false,"Dungeon",J.Obj("State","NotInDungeon"),"Mode",J.Obj("MainButtonState","Fishing"));
+        Assert(Planner.Next(s,c,false,true,new Dictionary<string,DateTime>(),DateTime.UtcNow)==null,"collection without refill must not stop owned fishing");
+    }
     public static void Run(){
         var c=new Settings();var s=Sample();c.Goals.Add(new Goal{Name="목재+",Mode="runs",Target=14});Recipe(s,c,"목재+");Recipe(s,c,"목재");Count(s,"목재",12);Count(s,"통나무",50);Count(s,"나무 진액",1000);s.Gatherables.Add(J.Obj("DisplayName","통나무","ToolOk",true));
         for(int i=0;i<4;i++){var p=Next(s,c);Assert(p.Command=="execute_altering"&&p.Name=="목재+","available parent stock must register first");Apply(s,c,p);}

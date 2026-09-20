@@ -71,6 +71,9 @@ class ClosingChecks {
         Assert(result.Interrupted&&bridge.Stops==1,"periodic inventory recheck must stop without processing goals");
         bridge=new GatherProbeBridge();var stalled=new TaskCompletionSource<bool>();result=await GatherPreemption.Wait(bridge,bridge.Pending.Task,new System.Collections.Generic.HashSet<string>(),()=>true,async()=>{await bridge.Call("stop_action",null);},1,null,10,()=>stalled.Task);
         Assert(result.Interrupted&&bridge.Stops==1,"stalled status query blocked periodic stop");stalled.SetResult(true);
+        bridge=new GatherProbeBridge();int inventoryReads=0;
+        result=await GatherPreemption.Wait(bridge,bridge.Pending.Task,new System.Collections.Generic.HashSet<string>(),()=>true,async()=>{await bridge.Call("stop_action",null);},1,null,1,null,null,()=>Task.FromResult(++inventoryReads>=3?"target reached":null));
+        Assert(inventoryReads==3&&result.Interrupted&&bridge.Stops==1,"inventory mode used timer instead of actual target");
         Console.WriteLine("PASS collection preemption: full queue only, one stop, unrelated and cancelled actions protected");
     }
     [STAThread]static int Main(){try{GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
