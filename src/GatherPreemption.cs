@@ -5,6 +5,28 @@ using System.Threading.Tasks;
 namespace MabiRemote {
 public class GatherWaitResult { public Reply Reply; public bool Interrupted; }
 public static class GatherPreemption {
+    public static async Task StopWhenAvailable(IBridge bridge,Task pending,Func<bool> allowed,Action<string> log=null,int retryMs=500){
+        bool retry=false;
+        while(!pending.IsCompleted&&allowed()){
+            if(retry){
+                if(await Task.WhenAny(pending,Task.Delay(retryMs))==pending||!allowed())return;
+                var status=await bridge.Call("get_activity",null);status.Check();
+                if(pending.IsCompleted||!allowed())return;
+                var activity=J.Unwrap(status.Data);var snapshot=new Snapshot{Activity=activity};
+                string interaction=J.S(J.Get(activity,"Interaction"),"AvailableInteractionType");
+                if(snapshot.Dungeon!="NotInDungeon"||J.B(snapshot.Section("combatState"),"IsInCombat")||J.B(J.Get(activity,"Performance"),"IsPlaying")||(interaction!=""&&interaction!="None"&&interaction!="Gathering"))throw new OperationCanceledException("다른 행동이 감지되어 채집 중지 재시도를 종료했습니다.");
+                if(!J.B(snapshot.Section("autoPlay"),"IsAutoPlaying"))throw new OperationCanceledException("자동 채집이 종료되어 중지 재시도를 종료했습니다.");
+                if(J.S(J.Get(activity,"Mode"),"MainButtonState")!="Stop")continue;
+            }
+            if(pending.IsCompleted||!allowed())return;
+            var reply=await bridge.Call("stop_action",null);
+            if(reply.ExitCode==0&&J.S(J.Unwrap(reply.Data),"error")=="invalid_state"){
+                if(!retry&&log!=null)log("채집 동작 전환 중 · 중지 가능한 상태를 확인해 다시 요청합니다.");
+                retry=true;continue;
+            }
+            reply.Check();return;
+        }
+    }
     public static bool Ready(IEnumerable<object> works,HashSet<string> facilities){
         return works.GroupBy(x=>J.S(x,"FacilityName")).Any(g=>facilities.Contains(g.Key)&&g.All(x=>J.B(x,"IsCompleted")));
     }
@@ -70,9 +92,9 @@ public partial class MainForm {
         if(Planner.ShouldInterruptForCollection(fresh,cfg))return "가공 완료 및 재등록 재료 확보 · 채집을 중단하고 수령합니다.";
         await ObserveGatherActivity(stamp,active);return null;
     }
-    async Task StopGatherForCollection(){
+    async Task StopGatherForCollection(Task pending,int stamp){
         stopping=true;
-        try{var reply=await bridge.Call("stop_action",null);reply.Check();}
+        try{await GatherPreemption.StopWhenAvailable(bridge,pending,()=>auto&&!closing&&!stopRequested&&generation==stamp,Log);}
         finally{stopping=false;}
     }
 }

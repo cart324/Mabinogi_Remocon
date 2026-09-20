@@ -18,6 +18,13 @@ class GatherProbeBridge:IBridge {
         Stops++;Pending.SetResult(new Reply{Data=J.Obj("result","stopped_by_user")});return Task.FromResult(new Reply{Data=J.Obj("status","accepted")});
     }
 }
+class RetryStopBridge:IBridge {
+    public int Stops,Reads;public bool Other,Finish;public TaskCompletionSource<Reply> Pending=new TaskCompletionSource<Reply>();
+    public Task<Reply> Call(string command,object body){
+        if(command=="get_activity"){Reads++;if(Finish)Pending.TrySetResult(new Reply());return Task.FromResult(new Reply{Data=J.Obj("IsAutoPlaying",true,"IsInCombat",Other,"Dungeon",J.Obj("State","NotInDungeon"),"Mode",J.Obj("MainButtonState",Reads==1?"Compass":"Stop"),"Interaction",J.Obj("AvailableInteractionType","Gathering"))});}
+        Stops++;return Task.FromResult(new Reply{Data=Stops<3?J.Obj("status","rejected","body",J.Obj("error","invalid_state")):J.Obj("status","accepted")});
+    }
+}
 class ClosingChecks {
     static void Set(object f,string key,object val){typeof(MainForm).GetField(key,BindingFlags.NonPublic|BindingFlags.Instance).SetValue(f,val);}
     static void Assert(bool value,string text){if(!value)throw new Exception(text);}
@@ -76,5 +83,12 @@ class ClosingChecks {
         Assert(inventoryReads==3&&result.Interrupted&&bridge.Stops==1,"inventory mode used timer instead of actual target");
         Console.WriteLine("PASS collection preemption: full queue only, one stop, unrelated and cancelled actions protected");
     }
-    [STAThread]static int Main(){try{GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
+    static async Task RetryChecks(){
+        var b=new RetryStopBridge();await GatherPreemption.StopWhenAvailable(b,b.Pending.Task,()=>true,null,1);Assert(b.Stops==3&&b.Reads==3,"transient invalid_state did not retry across action gaps");
+        b=new RetryStopBridge{Finish=true};await GatherPreemption.StopWhenAvailable(b,b.Pending.Task,()=>true,null,1);Assert(b.Stops==1,"retried after gathering completed");
+        b=new RetryStopBridge{Other=true};bool cancelled=false;try{await GatherPreemption.StopWhenAvailable(b,b.Pending.Task,()=>true,null,1);}catch(OperationCanceledException){cancelled=true;}Assert(cancelled&&b.Stops==1,"stopped unrelated combat");
+        b=new RetryStopBridge();await GatherPreemption.StopWhenAvailable(b,b.Pending.Task,()=>false,null,1);Assert(b.Stops==0,"stopped after user cancellation");
+        Console.WriteLine("PASS transient stop rejection retry, natural completion, other action and user cancellation");
+    }
+    [STAThread]static int Main(){try{RetryChecks().GetAwaiter().GetResult();GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
 }
