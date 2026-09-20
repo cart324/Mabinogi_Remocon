@@ -9,6 +9,8 @@ public sealed class GameCommandException:Exception {
     public GameCommandException(string friendly,string details):base(details){UserMessage=friendly;}
 }
 public static class FriendlyText {
+    public static string DisplayName(string value){return Regex.Replace(value??"",@"</?color(?:=[^>]*)?>", "",RegexOptions.IgnoreCase);}
+
     static readonly Dictionary<string,string> Errors=new Dictionary<string,string>{
         {"game_off","게임에 연결할 수 없습니다. 게임 실행과 캐릭터 접속 상태를 확인하세요."},
         {"option_off","AI 커넥터가 꺼져 있습니다. 게임 설정에서 켜주세요."},

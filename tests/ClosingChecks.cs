@@ -90,5 +90,15 @@ class ClosingChecks {
         b=new RetryStopBridge();await GatherPreemption.StopWhenAvailable(b,b.Pending.Task,()=>false,null,1);Assert(b.Stops==0,"stopped after user cancellation");
         Console.WriteLine("PASS transient stop rejection retry, natural completion, other action and user cancellation");
     }
-    [STAThread]static int Main(){try{RetryChecks().GetAwaiter().GetResult();GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
+    static void EditorChecks(){
+        using(var form=new MainForm(true,true)){
+            var method=typeof(MainForm).GetMethod("Number",BindingFlags.NonPublic|BindingFlags.Instance);
+            using(var number=(NumericUpDown)method.Invoke(form,new object[]{3000m,1000000}))Assert(number.Value==3000&&number.Maximum==1000000,"large goal editor value");
+            using(var number=(NumericUpDown)method.Invoke(form,new object[]{-5m,50}))Assert(number.Value==0,"invalid old value clamp");
+        }
+        Assert(FriendlyText.DisplayName("<color=#FFC448>★10</color> 초월의 정수")=="★10 초월의 정수","color tags not removed");
+        Assert(FriendlyText.DisplayName("목재+ * 별 ★")=="목재+ * 별 ★","literal name damaged");
+        Console.WriteLine("PASS numeric editor 3000 and display-only color tag removal");
+    }
+    [STAThread]static int Main(){try{RetryChecks().GetAwaiter().GetResult();GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();EditorChecks();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
 }
