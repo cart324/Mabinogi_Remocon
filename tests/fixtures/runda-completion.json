@@ -1,0 +1,47 @@
+[
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "이멘마하"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "Entering",
+        "IsBossBattleInProgress": false
+      },
+      "Battlefield": {
+        "IsInBattleField": false
+      }
+    },
+    "Quests": []
+  },
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "룬다 던전 2층 3구역"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "InProgress",
+        "IsBossBattleInProgress": false
+      },
+      "Battlefield": {
+        "IsInBattleField": false
+      }
+    },
+    "Quests": []
+  },
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "룬다 던전 2층 3구역"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "Cleared",
+        "IsBossBattleInProgress": true
+      },
+      "Battlefield": {
+        "IsInBattleField": false
+      }
+    },
+    "Quests": []
+  }
+]

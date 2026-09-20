@@ -15,7 +15,7 @@ public partial class MainForm {
     async Task<object> Read(string command){if(!commands.ContainsKey(command)&&command!="status"&&command!="capabilities")throw new Exception("게임이 명령을 제공하지 않습니다: "+command);var r=await bridge.Call(command,null);r.Check();return J.Unwrap(r.Data);}
     async Task RefreshSnapshot(bool catalogs, bool afterAction=false){
         var refreshClock=System.Diagnostics.Stopwatch.StartNew();
-        var fresh=new Snapshot();fresh.Environment=await Read("get_current_environment");fresh.Activity=await Read("get_activity");fresh.ActivityAt=DateTime.UtcNow;fresh.Inventory=await Read("get_inventory");fresh.Items=J.Rows(await Read("get_items"));fresh.Works=J.Rows(J.Get(await Read("get_altering_works"),"works"));
+        var fresh=new Snapshot();fresh.Environment=await Read("get_current_environment");fresh.Activity=await Read("get_activity");fresh.ActivityAt=DateTime.UtcNow;await ObserveActivity(fresh);fresh.Inventory=await Read("get_inventory");fresh.Items=J.Rows(await Read("get_items"));fresh.Works=J.Rows(J.Get(await Read("get_altering_works"),"works"));
         if(catalogs||snap.Recipes.Count==0||DateTime.UtcNow-catalogAt>TimeSpan.FromSeconds(60)){
             fresh.Recipes=J.Rows(J.Get(await Read("get_alterable_items"),"items"));
             if(!afterAction||snap.Gatherables.Count==0||DateTime.UtcNow-catalogAt>TimeSpan.FromSeconds(60)){fresh.Gatherables=J.Rows(J.Get(await Read("get_gatherable_items"),"items"));catalogAt=DateTime.UtcNow;}else fresh.Gatherables=snap.Gatherables;
@@ -50,13 +50,12 @@ public partial class MainForm {
                 if(!await RunPlan(plan,stamp))break;
                 await Task.Yield(); // Let Stop/Pause clicks run; no artificial inter-action delay.
             }
-            lastWarning="";nextPoll=DateTime.UtcNow.AddSeconds(MusicActive?(jukebox.NearEnd?0.25:1):auto?1:3);
-        }catch(Exception ex){if(MusicActive)jukebox.Detach("게임 연결 또는 상태 조회 실패 · 게임의 현재 연주를 확인하세요.");connected=false;connectionIssue=ex is FileNotFoundException?"게임 CLI 파일 없음":failureLabel;hasCatalog=false;if(auto)Pause("조회 실패로 자동화를 일시정지했습니다.");stopFishOnFailure=ownsFishing;if(lastWarning!=ex.Message){Log(ex.Message);lastWarning=ex.Message;}nextPoll=DateTime.UtcNow.AddSeconds(disconnected?3:15);}
+            lastWarning="";nextPoll=DateTime.UtcNow.AddSeconds(MusicActive?(jukebox.NearEnd?0.25:1):auto||ActivityCompletionWatch.FastPoll(snap)||activityDiagnosticPath!=""?1:3);
+        }catch(Exception ex){if(disconnected)completionWatch.Reset();if(MusicActive)jukebox.Detach("게임 연결 또는 상태 조회 실패 · 게임의 현재 연주를 확인하세요.");connected=false;connectionIssue=ex is FileNotFoundException?"게임 CLI 파일 없음":failureLabel;hasCatalog=false;if(auto)Pause("조회 실패로 자동화를 일시정지했습니다.");stopFishOnFailure=ownsFishing;if(lastWarning!=ex.Message){Log(ex.Message);lastWarning=ex.Message;}nextPoll=DateTime.UtcNow.AddSeconds(disconnected?3:15);}
         finally{busy=false;UpdateLiveLabels();}
         if(stopFishOnFailure)await StopFishOnly();
     }
     void Observe(){
-        string state=snap.Dungeon;if(cfg.DungeonNotifications&&state=="Cleared"&&lastDungeon!=""&&lastDungeon!="Cleared")Notify("던전 완료","게임이 던전 클리어 상태를 알렸습니다.");lastDungeon=state;
         if(watched!=""){var l=cfg.Landmarks.FirstOrDefault(x=>x.Name==watched);var pos=J.Get(snap.Environment,"WorldPosition");if(l!=null&&J.S(snap.Environment,"GameSpaceDisplayName")==l.Area){double dx=J.N(pos,"X")-l.X,dy=J.N(pos,"Y")-l.Y;if(Math.Sqrt(dx*dx+dy*dy)<=10){if(cfg.ArrivalNotifications)Notify("이동 완료",l.Name+" · 입장과 재화 사용은 게임에서 직접 진행하세요.");watched="";}}}
     }
     void StartAutomation(){
@@ -148,7 +147,7 @@ public partial class MainForm {
         if(actionOwned||stopping||busy){e.Cancel=true;Notice("현재 게임 작업이 응답을 기다리고 있습니다. ‘중지’를 누른 뒤 응답이 돌아오면 종료하세요.");return;}
         if(MusicActive){e.Cancel=true;RequestMusicStop();Notice("주크박스 중지 응답을 확인한 뒤 종료하세요.");return;}
         if(ownsFishing){e.Cancel=true;Notice("리모컨이 시작한 낚시가 진행 중입니다. ‘중지’ 후 종료하세요.");return;}
-        closing=true;auto=false;generation++;timer.Stop();tray.Visible=false;tray.Dispose();foreach(var im in iconCache.Values)im.Dispose();Save();
+        EndActivityDiagnostic("프로그램 종료");closing=true;auto=false;generation++;timer.Stop();tray.Visible=false;tray.Dispose();foreach(var im in iconCache.Values)im.Dispose();Save();
     }
     public async Task RenderPreview(string dir){
         Directory.CreateDirectory(dir);int previewScale;if(Int32.TryParse(Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_SCALE"),out previewScale)&&UiSizing.Options.Contains(previewScale))displayScaleCombo.SelectedItem=previewScale+"%";string fixture=Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_FIXTURE");if(demo&&!String.IsNullOrEmpty(fixture)&&File.Exists(fixture)){var db=(DemoBridge)bridge;db.Works=J.Rows(J.Get(J.Parse(File.ReadAllText(fixture,Encoding.UTF8)),"works"));}await Poll(true);for(int i=0;i<tabs.TabPages.Count;i++){tabs.SelectedIndex=i;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(Path.Combine(dir,"screen-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}}
@@ -177,6 +176,6 @@ public partial class MainForm {
         return J.Obj("manualCollectThenRegister",collectedFirst,"stoppedOnCollectionFailure",stoppedOnCollectionFailure,"registrationsBeyondOldLimit",unlimitedByBudget,"passed",success,"collections",collections,"autoRegistrations",registrations,"manualRegistrations",manualRegistrations,"manualUsedSlots",manualUsedSlots,"manualQueueEmpty",manualQueue.Count==0,"visibleFacilities",facilityGrid.Rows.Count,"fishOptions",fishCombo.Items.Count,"dialogs",0);
     }
     public void SaveLivePreview(string path){tabs.SelectedIndex=0;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(path,System.Drawing.Imaging.ImageFormat.Png);}}
-    public async Task<object> LiveCheck(){await Poll(true);return J.Obj("connected",connected,"recipes",snap.Recipes.Count,"items",snap.Items.Count,"works",snap.Works.Count,"gatherables",snap.Gatherables.Count,"area",J.S(snap.Environment,"GameSpaceDisplayName"),"activity",ActivityText(),"auto",auto);}
+    public async Task<object> LiveCheck(){await Poll(true);return J.Obj("connected",connected,"recipes",snap.Recipes.Count,"items",snap.Items.Count,"works",snap.Works.Count,"gatherables",snap.Gatherables.Count,"area",J.S(snap.Environment,"GameSpaceDisplayName"),"activity",ActivityText(),"auto",auto,"lastNotification",lastNotificationLabel.Text,"activityWatch",activityWatchLabel.Text);}
 }
 }

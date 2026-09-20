@@ -1,0 +1,104 @@
+[
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "얼음 협곡"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "NotInDungeon",
+        "IsBossBattleInProgress": false
+      },
+      "Battlefield": {
+        "IsInBattleField": true
+      },
+      "IsAutoPlaying": true
+    },
+    "Quests": [
+      {
+        "QuestTitle": "얼음 협곡 사냥 IV",
+        "Source": "goddess_mission",
+        "SourceDisplayName": "지역 임무",
+        "Objectives": [
+          {
+            "Description": "8구역 정찰 지점 확인",
+            "IsCompleted": true,
+            "Count": 0,
+            "Goal": 0
+          },
+          {
+            "Description": "얼음 협곡 몬스터 소탕 24/35",
+            "IsCompleted": false,
+            "Count": 0,
+            "Goal": 35
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "얼음 협곡"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "NotInDungeon",
+        "IsBossBattleInProgress": false
+      },
+      "Battlefield": {
+        "IsInBattleField": true
+      },
+      "IsAutoPlaying": true
+    },
+    "Quests": [
+      {
+        "QuestTitle": "얼음 협곡 사냥 IV",
+        "Source": "goddess_mission",
+        "SourceDisplayName": "지역 임무",
+        "Objectives": [
+          {
+            "Description": "8구역 정찰 지점 확인",
+            "IsCompleted": true,
+            "Count": 0,
+            "Goal": 0
+          },
+          {
+            "Description": "얼음 협곡 몬스터 소탕 35/35",
+            "IsCompleted": true,
+            "Count": 0,
+            "Goal": 35
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Environment": {
+      "GameSpaceDisplayName": "얼음 협곡"
+    },
+    "Activity": {
+      "Dungeon": {
+        "State": "NotInDungeon",
+        "IsBossBattleInProgress": false
+      },
+      "Battlefield": {
+        "IsInBattleField": true
+      },
+      "IsAutoPlaying": true
+    },
+    "Quests": [
+      {
+        "QuestTitle": "얼음 협곡 사냥 IV 완료됨",
+        "Source": "goddess_mission",
+        "SourceDisplayName": "지역 임무",
+        "Objectives": [
+          {
+            "Description": "여신상에서 전리품 받기",
+            "IsCompleted": false,
+            "Count": 0,
+            "Goal": 0
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -79,6 +79,7 @@ public static class SelfTests {
         Check("수동 예약은 완료 작업을 제외하고 기존 예약 차감",()=>{var s=Sample();var c=new Settings();for(int i=0;i<5;i++)s.Works.Add(Work("목재",true));s.Works.Add(Work("목재",false));Assert(Facilities.Free(s,c,"목재 가공 시설")==1,"actual free slots");Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",0)==6,"five done plus one unfinished leaves six");Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",2)==4,"existing reservations");c.FacilitySlots["목재 가공 시설"]=0;Assert(Facilities.ManualAvailable(s,c,"목재 가공 시설",0)==0,"zero capacity");});
         Check("UI 배율 저장과 이전 설정 기본값",()=>{var c=new Settings{UiScale=80};Assert(J.Serializer().Deserialize<Settings>(J.Json(c)).UiScale==80,"persist");Assert(J.Serializer().Deserialize<Settings>("{}").UiScale==100,"legacy default");});
         JukeboxTests.Run(Check);
+        ActivityCompletionTests.Run(Check);
         report=String.Join(Environment.NewLine,results)+Environment.NewLine+"TOTAL "+results.Count+" / FAILED "+failed;return failed==0?0:1;
     }
 }
