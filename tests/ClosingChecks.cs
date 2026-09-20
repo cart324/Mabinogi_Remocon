@@ -11,6 +11,13 @@ class CloseBridge:IBridge,IDisposable {
     public Task<Reply> Call(string command,object body){Calls++;if(Mode=="hang")return new TaskCompletionSource<Reply>().Task;return Task.FromResult(new Reply{Data=J.Obj("pipe",Mode)});}
     public void Dispose(){Disposed=true;}
 }
+class GatherProbeBridge:IBridge {
+    public TaskCompletionSource<Reply> Pending=new TaskCompletionSource<Reply>();public int Reads,Stops;public bool Cancel;public bool Allowed=true;
+    public Task<Reply> Call(string command,object body){
+        if(command=="get_altering_works"){Reads++;if(Cancel){Allowed=false;Pending.SetResult(new Reply{Data=J.Obj("result","completed")});}return Task.FromResult(new Reply{Data=J.Obj("works",new[]{J.Obj("FacilityName","wood","IsCompleted",Reads>=2)})});}
+        Stops++;Pending.SetResult(new Reply{Data=J.Obj("result","stopped_by_user")});return Task.FromResult(new Reply{Data=J.Obj("status","accepted")});
+    }
+}
 class ClosingChecks {
     static void Set(object f,string key,object val){typeof(MainForm).GetField(key,BindingFlags.NonPublic|BindingFlags.Instance).SetValue(f,val);}
     static void Assert(bool value,string text){if(!value)throw new Exception(text);}
@@ -51,5 +58,16 @@ class ClosingChecks {
         }
         Console.WriteLine("PASS settings remain editable during polling, protected during actions");
     }
-    [STAThread]static int Main(){try{Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
+    static async Task GatherChecks(){
+        var facilities=new System.Collections.Generic.HashSet<string>{"wood"};
+        Assert(!GatherPreemption.Ready(new object[0],facilities),"empty queue interrupted");
+        Assert(!GatherPreemption.Ready(new[]{J.Obj("FacilityName","wood","IsCompleted",true),J.Obj("FacilityName","wood","IsCompleted",false)},facilities),"partial queue interrupted");
+        Assert(!GatherPreemption.Ready(new[]{J.Obj("FacilityName","metal","IsCompleted",true)},facilities),"unrelated facility interrupted");
+        var bridge=new GatherProbeBridge();var result=await GatherPreemption.Wait(bridge,bridge.Pending.Task,facilities,()=>bridge.Allowed,async()=>{var r=await bridge.Call("stop_action",null);r.Check();},1);
+        Assert(result.Interrupted&&bridge.Reads==2&&bridge.Stops==1&&J.S(result.Reply.Data,"result")=="stopped_by_user","completed queue did not interrupt once");
+        bridge=new GatherProbeBridge{Cancel=true};result=await GatherPreemption.Wait(bridge,bridge.Pending.Task,facilities,()=>bridge.Allowed,async()=>{await bridge.Call("stop_action",null);},1);
+        Assert(!result.Interrupted&&bridge.Stops==0,"stop issued after cancellation or gathering completion");
+        Console.WriteLine("PASS collection preemption: full queue only, one stop, unrelated and cancelled actions protected");
+    }
+    [STAThread]static int Main(){try{GatherChecks().GetAwaiter().GetResult();Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
 }
