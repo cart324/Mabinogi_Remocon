@@ -63,13 +63,13 @@ public partial class MainForm : Form {
     void BuildFacilities(){
         facilityGrid=Grid("시설","전체 슬롯","빈 슬롯","완료","진행·대기","다음 완료까지","마지막 완료까지","가공 품목");
         float[] widths={171,83,81,69,102,104,99,422};for(int i=0;i<widths.Length;i++){facilityGrid.Columns[i].FillWeight=widths[i];facilityGrid.Columns[i].SortMode=DataGridViewColumnSortMode.NotSortable;}facilityGrid.Columns[5].HeaderText="다음 완료\n남은 시간";facilityGrid.Columns[6].HeaderText="최종 완료\n남은 시간";
-        var bar=Bar();bar.Controls.Add(Button("선택 시설 자동 가공",()=>{var n=Selected<string>(facilityGrid);if(n!=null){autoFacilityCombo.SelectedItem=n;tabs.SelectedIndex=1;}}));bar.Controls.Add(Button("선택 시설 수동 가공",()=>{var n=Selected<string>(facilityGrid);if(n!=null){manualFacilityCombo.SelectedItem=n;tabs.SelectedIndex=2;}}));bar.Controls.Add(Button("일괄 수령",async()=>await ManualCollect()));
+        var bar=Bar();bar.Controls.Add(Button("자동 가공 목표",()=>{tabs.SelectedIndex=1;}));bar.Controls.Add(Button("선택 시설 수동 가공",()=>{var n=Selected<string>(facilityGrid);if(n!=null){manualFacilityCombo.SelectedItem=n;tabs.SelectedIndex=2;}}));bar.Controls.Add(Button("일괄 수령",async()=>await ManualCollect()));
         Page("가공 시설","전체 슬롯은 우상단 설정에서 시설별로 변경합니다 (기본 7칸). 완료 후 미수령 작업도 슬롯을 차지합니다. 모든 시설을 항상 표시합니다.",facilityGrid,bar);RenderFacilities();
     }
     void BuildGoals(){
-        goalGrid=Grid("사용","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","상태");var bar=Bar();autoFacilityCombo=Combo(180);Fill(autoFacilityCombo,Facilities.Names,null);autoFacilityCombo.SelectedIndexChanged+=(s,e)=>RenderGoals();bar.Controls.Add(autoFacilityCombo);
+        goalGrid=Grid("우선순위","사용","시설","가공법 / 완제품","방식","목표","진행 / 보유","예약 작업","상태");var bar=Bar();float[] goalWidths={70,50,140,180,100,70,95,85,180};for(int i=0;i<goalGrid.Columns.Count;i++){goalGrid.Columns[i].SortMode=DataGridViewColumnSortMode.NotSortable;goalGrid.Columns[i].FillWeight=goalWidths[i];}
         bar.Controls.Add(Button("목표 추가",()=>EditGoal(null)));bar.Controls.Add(Button("선택 수정",()=>EditGoal(Selected<Goal>(goalGrid))));bar.Controls.Add(Button("선택 삭제",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){cfg.Goals.Remove(g);Save();RenderGoals();}}}));bar.Controls.Add(Button("횟수 초기화",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){g.RunsDone=0;Save();RenderGoals();}}}));bar.Controls.Add(Button("우선순위 ↑",()=>MoveGoal(-1)));bar.Controls.Add(Button("우선순위 ↓",()=>MoveGoal(1)));
-        Page("자동 가공","시설 선택 → 반복 목표 설정. 등록 횟수·목표 보유 수량·무제한을 지원하며 시설의 빈 슬롯만 사용합니다. 시설 슬롯 수만큼 재료를 묶음 준비합니다. 배합표가 없는 가공법은 등록하지 않습니다.",goalGrid,bar);
+        Page("자동 가공","모든 시설의 목표를 하나의 우선순위로 관리합니다. 목표 추가에서 시설과 가공법을 선택하세요. 보유 재료 등록 → 현재 부족 재료 → 다음 가공분 준비 순으로 진행합니다.",goalGrid,bar);
     }
     void BuildManual(){
         recipeGrid=Grid("가공법","지금 등록 가능","1회 생산","부족 재료 / 사유");manualGrid=Grid("시설","가공법","1회성 등록 수");

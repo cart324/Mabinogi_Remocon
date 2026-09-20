@@ -150,7 +150,7 @@ public class Snapshot {
         if(Activity==null || (J.Get(Activity,"combatState")==null && J.Get(Activity,"IsInCombat")==null) || J.Get(Activity,"Dungeon")==null || J.Get(Activity,"Mode")==null)return true;
         if(Dungeon!="NotInDungeon")return true;
         foreach(string k in new[]{"IsDead","IsReviving","IsInCombat"})if(J.B(Section("combatState"),k))return true;
-        if(J.B(J.Get(Activity,"Battlefield"),"IsInBattleField")||J.B(Activity,"IsAbyssResultSequencePlaying"))return true;
+        if(J.B(Activity,"IsAbyssResultSequencePlaying"))return true;
         if(J.B(J.Get(Activity,"Tutorial"),"IsPlaying")||J.B(J.Get(Activity,"Scenario"),"IsInScenario")||J.B(J.Get(Activity,"Scenario"),"IsSequencePlaying"))return true;
         var dialog=Section("dialogue");if(J.B(dialog,"IsDialoguePlaying")||J.B(dialog,"IsWaitingForSelection"))return true;
         var mode=J.Get(Activity,"Mode");if(J.B(mode,"IsPlayingMiniGame")||J.B(mode,"IsHousingEditMode")||J.S(mode,"SitState")=="Sitting")return true;
@@ -163,24 +163,26 @@ public class Plan {public string Command,Name,Reason; public Goal Goal; public i
 public static class Planner {
     public static string Product(string name){return System.Text.RegularExpressions.Regex.Replace(name??"",@"\([^()]*\)$","").Trim();}
     public static string Product(Goal g){return String.IsNullOrEmpty(g.Product)?Product(g.Name):g.Product;}
-    public static int BatchRuns(Snapshot s,Settings cfg,Goal goal){
+    public static int BatchRuns(Snapshot s,Settings cfg,Goal goal,bool future=false){
         var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==goal.Name);if(r==null||J.N(r,"ProducedPerWork")<=0)return 0;
-        int slots=RecipeBook.BatchSlots(s,cfg,goal.Name);double needed=goal.Mode=="unlimited"?slots:goal.Mode=="runs"?Math.Max(0,goal.Target-goal.RunsDone):Math.Ceiling(Math.Max(0,goal.Target-s.Count(Product(goal),cfg.CountStorage)-RecipeBook.Pending(s,cfg,Product(goal)))/J.N(r,"ProducedPerWork"));
+        int slots=future?Facilities.Total(cfg,Facilities.ForRecipe(cfg,goal.Name)):RecipeBook.BatchSlots(s,cfg,goal.Name);double needed=goal.Mode=="unlimited"?slots:goal.Mode=="runs"?Math.Max(0,goal.Target-goal.RunsDone):Math.Ceiling(Math.Max(0,goal.Target-s.Count(Product(goal),cfg.CountStorage)-RecipeBook.Pending(s,cfg,Product(goal)))/J.N(r,"ProducedPerWork"));
         return (int)Math.Min(slots,needed);
     }
-    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int requested, Func<string,bool> ready, HashSet<string> visited){
+    private static Plan Recipe(Snapshot s, Settings cfg, string name, string product, int requested, Func<string,bool> ready, HashSet<string> visited,bool readyOnly=false,bool future=false){
         if(!visited.Add(name)||visited.Count>16)return null;
-        int batch=Math.Min(requested,RecipeBook.BatchSlots(s,cfg,name));if(batch<=0)return null;
+        int batch=Math.Min(requested,future?Facilities.Total(cfg,Facilities.ForRecipe(cfg,name)):RecipeBook.BatchSlots(s,cfg,name));if(batch<=0)return null;
         var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==name);var definition=RecipeBook.Find(cfg,name);if(r==null||definition==null)return null;
         if(!J.B(r,"Alterable")&&J.S(r,"Reason")!="not_enough_ingredient")return null;
+        bool canRegister=J.B(r,"Alterable")&&definition.Ingredients.All(i=>s.Count(i.Material,cfg.CountStorage)>=i.Count)&&Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,name))>0&&ready("execute_altering:"+name);
+        if(canRegister)return new Plan("execute_altering",name,"보유 재료 우선 등록: "+product,5);
         bool prepared=true;
         foreach(var ingredient in definition.Ingredients){
             string material=ingredient.Material;double required=(double)ingredient.Count*batch;double owned=s.Count(material,cfg.CountStorage);if(owned>=required)continue;prepared=false;
             double lack=required-owned-RecipeBook.Pending(s,cfg,material);if(lack<=0)continue;
             var children=s.Recipes.Where(x=>cfg.RecipeDefinitions.Any(d=>d.Name==J.S(x,"DisplayName")&&d.Product==material)).OrderByDescending(x=>J.B(x,"Alterable")).ToList();
-            foreach(var child in children){double yield=J.N(child,"ProducedPerWork");if(yield<=0)continue;var p=Recipe(s,cfg,J.S(child,"DisplayName"),material,(int)Math.Min(Int32.MaxValue,Math.Ceiling(lack/yield)),ready,new HashSet<string>(visited));if(p!=null){p.Reason+=" → "+product+"용 "+material+" "+required.ToString("0")+"개 준비";return p;}}
+            foreach(var child in children){double yield=J.N(child,"ProducedPerWork");if(yield<=0)continue;var p=Recipe(s,cfg,J.S(child,"DisplayName"),material,(int)Math.Min(Int32.MaxValue,Math.Ceiling(lack/yield)),ready,new HashSet<string>(visited),readyOnly,future);if(p!=null){p.Reason+=" → "+product+"용 "+material+" "+required.ToString("0")+"개 준비";return p;}}
             var gather=s.Gatherables.FirstOrDefault(x=>J.S(x,"DisplayName")==material&&J.B(x,"ToolOk"));
-            if(gather!=null&&ready("execute_gathering:"+material))return new Plan("execute_gathering",material,"묶음 채집: "+material+" "+required.ToString("0")+"개 준비 (보유 "+owned.ToString("0")+", 채집은 최대 100개 단위)",5){GatherTarget=(int)Math.Min(Int32.MaxValue,required)};
+            if(!readyOnly&&gather!=null&&ready("execute_gathering:"+material))return new Plan("execute_gathering",material,"묶음 채집: "+material+" "+required.ToString("0")+"개 준비 (보유 "+owned.ToString("0")+", 채집은 최대 100개 단위)",5){GatherTarget=(int)Math.Min(Int32.MaxValue,required)};
         }
         if(prepared&&J.B(r,"Alterable")&&Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,name))>0&&ready("execute_altering:"+name))return new Plan("execute_altering",name,"묶음 가공 등록: "+product+" · 남은 "+batch+"회분 재료 확보",5);
         return null;
@@ -191,11 +193,19 @@ public static class Planner {
         Func<string,bool> ready=key=>!cooldown.ContainsKey(key)||cooldown[key]<=now;
         var done=s.Works.FirstOrDefault(x=>J.B(x,"IsCompleted")&&ready("complete_altering_work:"+J.S(x,"DisplayName")));
         if(done!=null)return new Plan("complete_altering_work",J.S(done,"DisplayName"),J.S(done,"FacilityName")+" 완료 가공물 수령",0);
-        foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
+        // Search every goal for ready work before starting any material gathering.
+        for(int phase=0;phase<3;phase++)foreach(var g in cfg.Goals.Where(x=>x.Enabled)){
             if(!ready("execute_altering:"+g.Name))continue;
-            var r=s.Recipes.FirstOrDefault(x=>J.S(x,"DisplayName")==g.Name);if(r==null)continue;
-            string product=Product(g);int batch=BatchRuns(s,cfg,g);
-            if(batch>0){var p=Recipe(s,cfg,g.Name,product,batch,ready,new HashSet<string>());if(p!=null){if(p.Name==g.Name&&p.Command=="execute_altering")p.Goal=g;return p;}}
+            int free=Facilities.Free(s,cfg,Facilities.ForRecipe(cfg,g.Name));
+            if(phase==1&&free==0)continue;
+            bool future=phase==2||(phase==0&&free==0);
+            int batch=BatchRuns(s,cfg,g,future);if(batch<=0)continue;
+            var p=Recipe(s,cfg,g.Name,Product(g),batch,ready,new HashSet<string>(),phase==0,future);
+            if(p==null)continue;
+            if(p.Name==g.Name&&p.Command=="execute_altering")p.Goal=g;
+            if(phase==1)p.Reason="현재 가공 준비 · "+p.Reason;
+            if(phase==2)p.Reason="다음 가공분 준비 · "+p.Reason;
+            return p;
         }
         foreach(var g in cfg.Stocks.Where(x=>x.Gather&&x.Target>0)){
             if(s.Count(g.Name,cfg.CountStorage)>=g.Target||!ready("execute_gathering:"+g.Name))continue;
