@@ -45,7 +45,7 @@ public partial class MainForm {
     }
     void CaptureNavigation(string directory){
         Action<string> capture=name=>{Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(System.IO.Path.Combine(directory,name+".png"));}};
-        ShowUtility(settingsView);capture("settings");ShowUtility(updatesView);capture("updates");ShowTasks();
+        ShowUtility(settingsView);capture("settings");var activityOptions=activityWatchLabel.Parent as ScrollableControl;if(activityOptions!=null){activityOptions.ScrollControlIntoView(lastNotificationLabel);capture("settings-notifications");activityOptions.AutoScrollPosition=Point.Empty;}ShowUtility(updatesView);capture("updates");ShowTasks();
         var version=new Version(Updates.CurrentVersion);PresentUpdate(new ReleaseInfo{Version=new Version(version.Major,version.Minor,version.Build+1)});capture("update-banner");PresentUpdate(null);
     }
 }

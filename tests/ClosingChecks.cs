@@ -40,5 +40,16 @@ class ClosingChecks {
             Assert(blocked,"new CLI started after close");Console.WriteLine("PASS pending CLI cleanup and no launch after disposal");
         }finally{bridge.Dispose();if(File.Exists(pidFile))File.Delete(pidFile);}
     }
-    [STAThread]static int Main(){try{Application.EnableVisualStyles();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
+    static void SettingsDuringPoll(){
+        using(var form=new MainForm(true,true)){
+            var canEdit=typeof(MainForm).GetMethod("CanEdit",BindingFlags.NonPublic|BindingFlags.Instance);
+            Set(form,"busy",true);Set(form,"polling",true);
+            Assert((bool)canEdit.Invoke(form,null),"read-only polling blocked settings");
+            Set(form,"actionOwned",true);Assert(!(bool)canEdit.Invoke(form,null),"game action allowed settings");Set(form,"actionOwned",false);
+            Set(form,"polling",false);Assert(!(bool)canEdit.Invoke(form,null),"manual operation allowed settings");
+            Set(form,"busy",false);Assert((bool)canEdit.Invoke(form,null),"idle settings blocked");
+        }
+        Console.WriteLine("PASS settings remain editable during polling, protected during actions");
+    }
+    [STAThread]static int Main(){try{Application.EnableVisualStyles();SettingsDuringPoll();Run("known disconnected with pending flags",false,"hang",false);Run("stale connection now disconnected",true,"disconnected",false);Run("unresponsive status bounded exit",true,"hang",false);Run("connected operation retains guard",true,"connected",true);Cleanup();return 0;}catch(Exception ex){Console.WriteLine("FAIL "+ex);return 1;}}
 }

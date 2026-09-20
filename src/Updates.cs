@@ -10,7 +10,7 @@ public sealed class ReleaseInfo {
     public Version Version;
 }
 public static class Updates {
-    public const string CurrentVersion="2.0.4";
+    public const string CurrentVersion="2.0.5";
     public const string Repository="https://github.com/cart324/Mabinogi_Remocon";
     public const string LatestApi="https://api.github.com/repos/cart324/Mabinogi_Remocon/releases/latest";
     public static ReleaseInfo ParseRelease(object data) {

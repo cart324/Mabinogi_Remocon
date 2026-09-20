@@ -24,10 +24,10 @@ public partial class MainForm {
         await RefreshMusic(catalogs&&!afterAction);
         string selection=cfg.FishName;if(!auto&&!ownsFishing)Fill(fishCombo,snap.Gatherables.Select(x=>J.S(x,"DisplayName")).Where(FishNames.IsFish).Distinct(),selection);
         if(selection==""&&fishCombo.Items.Count>0)fishCombo.SelectedIndex=-1;
-        Observe();RenderAll();if(afterAction)Log("작업 후 상태 갱신: "+refreshClock.Elapsed.TotalSeconds.ToString("0.00")+"초");
+        RenderAll();if(afterAction)Log("작업 후 상태 갱신: "+refreshClock.Elapsed.TotalSeconds.ToString("0.00")+"초");
     }
     async Task Poll(bool force=false){
-        if(busy||closing||stopping)return;busy=true;bool stopFishOnFailure=false;string failureLabel="연결 확인 실패";bool disconnected=false;
+        if(busy||closing||stopping)return;ApplyCliChange();polling=true;busy=true;bool stopFishOnFailure=false;string failureLabel="연결 확인 실패";bool disconnected=false;
         try{
             var status=await bridge.Call("status",null);if(closing)return;if(status.ExitCode!=0||J.S(status.Data,"pipe")!="connected"){failureLabel=ConnectionStatus.Disconnected(status.Data);disconnected=true;throw new Exception(failureLabel+": "+J.S(status.Data,"reason"));}
             connected=true;connectionIssue="";failureLabel="게임 상태 조회 실패";
@@ -52,11 +52,8 @@ public partial class MainForm {
             }
             lastWarning="";nextPoll=DateTime.UtcNow.AddSeconds(MusicActive?(jukebox.NearEnd?0.25:1):auto||ActivityCompletionWatch.FastPoll(snap)||activityDiagnosticPath!=""?1:3);
         }catch(Exception ex){if(closing)return;if(disconnected){completionWatch.Reset();ownsFishing=false;fishingItem="";fishingTarget=0;}if(MusicActive)jukebox.Detach("게임 연결 또는 상태 조회 실패 · 게임의 현재 연주를 확인하세요.");connected=false;connectionIssue=ex is FileNotFoundException?"게임 CLI 파일 없음":failureLabel;hasCatalog=false;if(auto)Pause("조회 실패로 자동화를 일시정지했습니다.");stopFishOnFailure=ownsFishing;if(lastWarning!=ex.Message){Log(ex.Message);lastWarning=ex.Message;}nextPoll=DateTime.UtcNow.AddSeconds(disconnected?3:15);}
-        finally{busy=false;UpdateLiveLabels();}
+        finally{busy=false;polling=false;if(!closing)ApplyCliChange();UpdateLiveLabels();}
         if(stopFishOnFailure)await StopFishOnly();
-    }
-    void Observe(){
-        if(watched!=""){var l=cfg.Landmarks.FirstOrDefault(x=>x.Name==watched);var pos=J.Get(snap.Environment,"WorldPosition");if(l!=null&&J.S(snap.Environment,"GameSpaceDisplayName")==l.Area){double dx=J.N(pos,"X")-l.X,dy=J.N(pos,"Y")-l.Y;if(Math.Sqrt(dx*dx+dy*dy)<=10){if(cfg.ArrivalNotifications)Notify("이동 완료",l.Name+" · 입장과 재화 사용은 게임에서 직접 진행하세요.");watched="";}}}
     }
     void StartAutomation(){
         if(!connected||busy)return;
@@ -146,7 +143,7 @@ public partial class MainForm {
     public async Task RenderPreview(string dir){
         Directory.CreateDirectory(dir);int previewScale;if(Int32.TryParse(Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_SCALE"),out previewScale)&&UiSizing.Options.Contains(previewScale))displayScaleCombo.SelectedItem=previewScale+"%";string fixture=Environment.GetEnvironmentVariable("MABIREMOTE_PREVIEW_FIXTURE");if(demo&&!String.IsNullOrEmpty(fixture)&&File.Exists(fixture)){var db=(DemoBridge)bridge;db.Works=J.Rows(J.Get(J.Parse(File.ReadAllText(fixture,Encoding.UTF8)),"works"));}await Poll(true);for(int i=0;i<tabs.TabPages.Count;i++){tabs.SelectedIndex=i;Application.DoEvents();using(var bmp=new Bitmap(Width,Height)){DrawToBitmap(bmp,new Rectangle(0,0,Width,Height));bmp.Save(Path.Combine(dir,"screen-"+i+".png"),System.Drawing.Imaging.ImageFormat.Png);}}
         CaptureNavigation(dir);
-        int dialogIndex=0;using(var capture=new Timer{Interval=250}){capture.Tick+=(s,e)=>{var dialog=Application.OpenForms.OfType<EditDialog>().FirstOrDefault();if(dialog==null)return;using(var bmp=new Bitmap(dialog.Width,dialog.Height)){dialog.DrawToBitmap(bmp,new Rectangle(0,0,dialog.Width,dialog.Height));bmp.Save(Path.Combine(dir,"dialog-"+dialogIndex+".png"),System.Drawing.Imaging.ImageFormat.Png);}dialog.DialogResult=DialogResult.Cancel;};capture.Start();EditGoal(null);dialogIndex++;EditStock(null);dialogIndex++;SaveLandmark();dialogIndex++;EditRoute(null);dialogIndex++;EditRoutePoint(new RoutePreset{Material="통나무"},-1);capture.Stop();}
+        int dialogIndex=0;using(var capture=new Timer{Interval=250}){capture.Tick+=(s,e)=>{var dialog=Application.OpenForms.OfType<EditDialog>().FirstOrDefault();if(dialog==null)return;using(var bmp=new Bitmap(dialog.Width,dialog.Height)){dialog.DrawToBitmap(bmp,new Rectangle(0,0,dialog.Width,dialog.Height));bmp.Save(Path.Combine(dir,"dialog-"+dialogIndex+".png"),System.Drawing.Imaging.ImageFormat.Png);}dialog.DialogResult=DialogResult.Cancel;};capture.Start();EditGoal(null);dialogIndex++;EditStock(null);dialogIndex++;EditRoute(null);dialogIndex++;EditRoutePoint(new RoutePreset{Material="통나무"},-1);capture.Stop();}
 
     }
     public async Task<object> CheckActionFlow(){
