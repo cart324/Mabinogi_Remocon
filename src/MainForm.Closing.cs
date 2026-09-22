@@ -25,8 +25,8 @@ public partial class MainForm {
             finally{checkingCloseConnection=false;}
             if(closing||IsDisposed)return;
             if(unavailable||!connected){connected=false;BeginInvoke(new Action(Close));return;}
-            if(MusicActive){RequestMusicStop();Notice("주크박스 중지 응답을 확인한 뒤 종료하세요.");}
-            else Notice("현재 게임 작업이 진행 중입니다. ‘중지’ 후 응답이 돌아오면 종료하세요.");
+            if(MusicActive){RequestMusicStop();Notice("주크박스 연주를 중지한 후 종료하세요.");}
+            else Notice("작업이 진행 중입니다. 작업을 중지한 후 종료하세요.");
             return;
         }
         EndActivityDiagnostic("프로그램 종료");closing=true;auto=false;stopRequested=true;generation++;

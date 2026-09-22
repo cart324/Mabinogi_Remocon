@@ -47,8 +47,8 @@ public sealed class UiScaleState:IDisposable {
 }
 public partial class MainForm {
     UiScaleState displayScale;ComboBox displayScaleCombo;
-    void AddDisplayScale(FlowLayoutPanel options){var row=Bar();row.Dock=DockStyle.None;row.Controls.Add(Label("UI 배율 (즉시 적용)",10));displayScaleCombo=Combo(160);foreach(int percent in UiSizing.Options)displayScaleCombo.Items.Add(percent+"%");displayScaleCombo.SelectedItem=cfg.UiScale+"%";
-        row.Controls.Add(displayScaleCombo);row.Controls.Add(Label("작게 설정하면 같은 창에 더 많이 표시됩니다.",9));options.Controls.Add(row);
+    void AddDisplayScale(FlowLayoutPanel options){var row=Bar();row.Dock=DockStyle.None;row.Controls.Add(Label("UI 배율",10));displayScaleCombo=Combo(120);foreach(int percent in UiSizing.Options)displayScaleCombo.Items.Add(percent+"%");displayScaleCombo.SelectedItem=cfg.UiScale+"%";
+        row.Controls.Add(displayScaleCombo);options.Controls.Add(row);
         displayScaleCombo.SelectedIndexChanged+=(s,e)=>{if(displayScaleCombo.SelectedIndex<0)return;cfg.UiScale=UiSizing.Options[displayScaleCombo.SelectedIndex];ApplyDisplayScale(cfg.UiScale);Save();};
     }
     void ApplyDisplayScale(int percent){if(displayScale==null)displayScale=new UiScaleState(this);UiSizing.Percent=percent;SuspendLayout();try{displayScale.Apply(percent);}finally{ResumeLayout(true);}PerformLayout();}

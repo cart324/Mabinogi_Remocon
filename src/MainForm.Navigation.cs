@@ -9,9 +9,9 @@ public partial class MainForm {
     TableLayoutPanel updateBanner;
     Label updateBannerText;
     Control BuildHeader(){
-        var heading=new TableLayoutPanel{Dock=DockStyle.Top,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,ColumnCount=4,RowCount=1,Padding=new Padding(5)};
+        var heading=new TableLayoutPanel{Dock=DockStyle.Top,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,ColumnCount=4,RowCount=1,Padding=new Padding(4,2,4,6)};
         heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));heading.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        var title=Label("에린 리모컨",20);title.Anchor=AnchorStyles.Left;
+        var title=Label("에린 리모컨",18);title.Anchor=AnchorStyles.Left;
         connectionLabel=Label(demo?"DEMO · 게임 조작 없음":"연결 확인 중",10);connectionLabel.AutoSize=false;connectionLabel.Dock=DockStyle.Fill;connectionLabel.TextAlign=ContentAlignment.MiddleLeft;connectionLabel.MinimumSize=new Size(180,34);
         settingsHeaderButton=Button("설정",()=>ShowUtility(settingsView));settingsHeaderButton.Anchor=AnchorStyles.Right;
         updatesHeaderButton=Button("업데이트",()=>ShowUtility(updatesView));updatesHeaderButton.Anchor=AnchorStyles.Right;
@@ -24,7 +24,7 @@ public partial class MainForm {
     Panel MoveUtilityPage(TabPage page){
         var panel=new Panel{Dock=DockStyle.Fill,BackColor=Canvas,Padding=page.Padding,Visible=false};
         var controls=page.Controls.Cast<Control>().ToArray();foreach(var control in controls){page.Controls.Remove(control);panel.Controls.Add(control);}
-        var back=Bar();back.Controls.Add(Button("작업 화면으로",ShowTasks));panel.Controls.Add(back);
+        var back=Bar();back.Controls.Add(Button("← 메인 화면으로",ShowTasks));panel.Controls.Add(back);
         tabs.TabPages.Remove(page);page.Dispose();contentHost.Controls.Add(panel);return panel;
     }
     void ShowUtility(Panel panel){if(panel==null)return;tabs.Visible=false;settingsView.Visible=panel==settingsView;updatesView.Visible=panel==updatesView;panel.BringToFront();}
@@ -32,15 +32,15 @@ public partial class MainForm {
     void BuildUpdateBanner(){
         updateBanner=new TableLayoutPanel{Dock=DockStyle.Top,AutoSize=true,AutoSizeMode=AutoSizeMode.GrowAndShrink,ColumnCount=3,RowCount=1,Padding=new Padding(16,6,16,6),BackColor=Color.FromArgb(215,237,231),Visible=false};
         updateBanner.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));updateBanner.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));updateBanner.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        updateBannerText=Label("새 업데이트가 있습니다.",10);updateBannerText.Dock=DockStyle.Fill;updateBannerText.TextAlign=ContentAlignment.MiddleLeft;
-        var open=Button("업데이트 보기",()=>ShowUtility(updatesView),true);open.Anchor=AnchorStyles.Right;
+        updateBannerText=Label("새 버전이 있습니다.",10);updateBannerText.Dock=DockStyle.Fill;updateBannerText.TextAlign=ContentAlignment.MiddleLeft;
+        var open=Button("업데이트 확인",()=>ShowUtility(updatesView),true);open.Anchor=AnchorStyles.Right;
         var hide=Button("닫기",()=>updateBanner.Visible=false);hide.Anchor=AnchorStyles.Right;
         updateBanner.Controls.Add(updateBannerText,0,0);updateBanner.Controls.Add(open,1,0);updateBanner.Controls.Add(hide,2,0);Controls.Add(updateBanner);
     }
     void PresentUpdate(ReleaseInfo release){
         updatesHeaderButton.Text=release==null?"업데이트":"업데이트 ●";
-        updateStatus.Text=release==null?"현재 버전 "+Updates.CurrentVersion+" · 게시된 새 정식 버전이 없습니다.":"새 버전 "+release.Version+" · 릴리스 페이지에서 다운로드하세요.";
-        updateBannerText.Text=release==null?"":"새 버전 "+release.Version+"이 있습니다. 업데이트에서 릴리스 페이지를 열어 다운로드하세요.";
+        updateStatus.Text=release==null?"현재 최신 버전입니다 ("+Updates.CurrentVersion+").":"새 버전 "+release.Version+"이 출시되었습니다. 릴리스 페이지에서 다운로드하세요.";
+        updateBannerText.Text=release==null?"":"새 버전 "+release.Version+"이 출시되었습니다. 업데이트 화면에서 확인하세요.";
         updateBanner.Visible=release!=null;
     }
     void CaptureNavigation(string directory){

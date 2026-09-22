@@ -10,3 +10,4 @@ settings.json.bak
 *.pfx
 *.key
 __pycache__/
+.idea/
