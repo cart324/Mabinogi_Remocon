@@ -66,7 +66,7 @@ public class Settings {
     public string FishName{get;set;}
     public Dictionary<string,int> FacilitySlots{get;set;}
     public Dictionary<string,string> RecipeFacilities{get;set;}
-    public Settings(){EnableRouteEditor=true;UseGatherRoutes=true;BagOverweightNotifications=true;BlackLumpNotifications=true;BlackLumpLimit=60;Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
+    public Settings(){EnableRouteEditor=false;UseGatherRoutes=true;BagOverweightNotifications=true;BlackLumpNotifications=true;BlackLumpLimit=60;Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
 }
 public static class Facilities {
     public static readonly string[] Names={"금속 가공 시설","목재 가공 시설","옷감 가공 시설","가죽 가공 시설","약품 가공 시설","식재료 가공 시설"};
