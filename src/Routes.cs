@@ -33,7 +33,8 @@ public static class RouteSharing {
         var file=J.Serializer().Deserialize<RouteFile>(text);if(file==null||file.Version!=1)throw new InvalidDataException("지원하지 않는 루트 파일 버전입니다.");
         Validate(file.Route);file.Route.Id=Guid.NewGuid().ToString("N");return file.Route;
     }
-    static double Distance(double x,double y,RoutePoint a,RoutePoint b){double dx=b.X-a.X,dy=b.Y-a.Y,length=dx*dx+dy*dy;double t=length==0?0:Math.Max(0,Math.Min(1,((x-a.X)*dx+(y-a.Y)*dy)/length));double px=x-a.X-t*dx,py=y-a.Y-t*dy;return Math.Sqrt(px*px+py*py);}
+    static double Distance(double x,double y,RoutePoint a,RoutePoint b){double dx=b.X-a.X,dy=b.Y-a.Y,length=dx*dx+dy*dy;double t=length==0?0:Math.Max(0,Math.Min(1,((x-a.X)*dx+(y-a.Y)*dy)/length));double px=x-a.X-t*dx,py=y-a.Y-t*dy;return Math.Sqrt(px*px+py*py);
+    }
     public static bool? IsOutside(RoutePreset route,string area,double x,double y){
         if(route==null||route.Points.Count==0||String.IsNullOrEmpty(area)||Double.IsNaN(x)||Double.IsNaN(y)||Double.IsInfinity(x)||Double.IsInfinity(y))return null;
         var start=route.Points[0];if(route.DeviationMode=="radius")return area!=start.Area||Distance(x,y,start,start)>route.Tolerance;
@@ -65,7 +66,7 @@ public partial class MainForm {
         routeSkillFilter=Combo(120);routeSkillFilter.Items.AddRange(new object[]{"전체","벌목","채광","채집","낚시"});routeSkillFilter.SelectedIndex=0;routeLevelFilter=Number(1,999);routeLevelFilter.Minimum=1;routeLevelFilter.Width=70;
         routeSkillFilter.SelectedIndexChanged+=(s,e)=>RenderRoutes();routeLevelFilter.ValueChanged+=(s,e)=>RenderRoutes();
         bar.Controls.Add(Label("스킬 / 레벨 필터",9));bar.Controls.Add(routeSkillFilter);bar.Controls.Add(routeLevelFilter);bar.SetFlowBreak(routeLevelFilter,true);routeGatherStatus=Label(gatherStatus,9);routeGatherStatus.MaximumSize=new Size(950,0);bar.Controls.Add(routeGatherStatus);
-        Page("채집 루트","채집 경로를 설계하고 프리셋 파일 또는 공유 코드로 내보내고 불러올 수 있습니다.",routeGrid,bar);
+        routePage=Page("채집 루트","채집 경로를 설계하고 프리셋 파일 또는 공유 코드로 내보내고 불러올 수 있습니다.",routeGrid,bar);
         RenderRoutes();
     }
     void RenderRoutes(){if(routeGrid==null)return;var selected=Selected<RoutePreset>(routeGrid);string filter=Convert.ToString(routeSkillFilter.SelectedItem);routeGrid.Rows.Clear();

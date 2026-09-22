@@ -16,7 +16,7 @@ public static class J {
     public static object Get(object o, string key) { var d = o as IDictionary<string,object>; object v; return d != null && d.TryGetValue(key,out v) ? v : null; }
     public static string S(object o, string k) { return Convert.ToString(Get(o,k),System.Globalization.CultureInfo.InvariantCulture) ?? ""; }
     public static double N(object o,string k) { double n; return Double.TryParse(S(o,k),System.Globalization.NumberStyles.Any,System.Globalization.CultureInfo.InvariantCulture,out n) ? n : 0; }
-    public static bool B(object o,string k) { return String.Equals(S(o,k),"true",StringComparison.OrdinalIgnoreCase); }
+    public static bool B(object o,string k) { return String.Equals(S(o,k), "true", StringComparison.OrdinalIgnoreCase); }
     public static List<object> Rows(object o) { var a = o as IEnumerable; if (a == null || o is string || o is IDictionary) return new List<object>(); return a.Cast<object>().ToList(); }
     public static object Obj(params object[] a) { var d = new Dictionary<string,object>(); for(int i=0;i<a.Length;i+=2) d[(string)a[i]]=a[i+1]; return d; }
     public static object Unwrap(object o) { return Get(o,"body") ?? o; }
@@ -47,6 +47,8 @@ public class Settings {
     public List<RecipeDefinition> RecipeDefinitions{get;set;}
     public List<RoutePreset> Routes{get;set;}
     public Dictionary<string,string> MaterialRoutes{get;set;}
+    public bool EnableRouteEditor{get;set;}
+    public bool UseGatherRoutes{get;set;}
     public bool BagOverweightNotifications{get;set;}
     public bool BlackLumpNotifications{get;set;}
     public int BlackLumpLimit{get;set;}
@@ -64,7 +66,7 @@ public class Settings {
     public string FishName{get;set;}
     public Dictionary<string,int> FacilitySlots{get;set;}
     public Dictionary<string,string> RecipeFacilities{get;set;}
-    public Settings(){BagOverweightNotifications=true;BlackLumpNotifications=true;BlackLumpLimit=60;Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
+    public Settings(){EnableRouteEditor=true;UseGatherRoutes=true;BagOverweightNotifications=true;BlackLumpNotifications=true;BlackLumpLimit=60;Playlist=new List<PlaylistEntry>();UiScale=100;RecipeDefinitions=RecipeBook.Defaults();Routes=RouteSharing.Bundled();MaterialRoutes=new Dictionary<string,string>();AutoCheckUpdates=true;ArrivalNotifications=true;DungeonNotifications=true;HuntingNotifications=true;CliPath=@"C:\Nexon\MabinogiMobile\MabinogiMobile_CLI.exe";Goals=new List<Goal>();Stocks=new List<StockGoal>();Landmarks=new List<Landmark>();Icons=new Dictionary<string,string>();FullPercent=95;FishName="";FacilitySlots=Facilities.Names.ToDictionary(x=>x,x=>7);RecipeFacilities=new Dictionary<string,string>();}
 }
 public static class Facilities {
     public static readonly string[] Names={"금속 가공 시설","목재 가공 시설","옷감 가공 시설","가죽 가공 시설","약품 가공 시설","식재료 가공 시설"};
@@ -85,7 +87,7 @@ public static class Facilities {
 }
 public sealed class FacilityTiming {
     public double? NextSeconds, FinalSeconds;
-    static double? Seconds(object work){double value;return Double.TryParse(J.S(work,"RemainingSeconds"),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out value)&&!Double.IsNaN(value)&&!Double.IsInfinity(value)&&value>=0?(double?)value:null;}
+    static double? Seconds(object work){double value;return Double.TryParse(J.S(work,"RemainingSeconds"),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out value)&&!Double.IsNaN(value)&&!Double.IsInfinity(value)&&value>=0?(double?)value:null; }
     public static FacilityTiming Calculate(IEnumerable<object> works,double elapsed){
         var active=works.Where(x=>!J.B(x,"IsCompleted")).ToList();var result=new FacilityTiming();if(active.Count==0)return result;
         var running=active.FirstOrDefault(x=>J.S(x,"State")=="InProgress");
@@ -144,7 +146,7 @@ public class Snapshot {
     public List<object> Items=new List<object>(),Works=new List<object>(),Recipes=new List<object>(),Gatherables=new List<object>();
     public DateTime At=DateTime.MinValue,ActivityAt=DateTime.MinValue;
     public int Count(string name,bool storage){return (int)Items.Where(x=>J.S(x,"DisplayName")==name&&(storage||J.S(x,"Location")=="inventory")).Sum(x=>J.N(x,"Count"));}
-    public int Queued(string name){return Works.Count(x=>J.S(x,"DisplayName")==name);}
+    public int Queued(string name){return Works.Count(x=>J.S(x,"DisplayName")==name); }
     public object Section(string name){return J.Get(Activity,name)??Activity;}
     public double Weight {get{return J.Get(Inventory,"CurrentInventoryWeight")!=null?J.N(Inventory,"CurrentInventoryWeight"):J.N(Inventory,"CurrentInventoryWeightAsDecimal");}}
     public double Capacity {get{return J.Get(Inventory,"MaxInventoryWeight")!=null?J.N(Inventory,"MaxInventoryWeight"):J.N(Inventory,"MaxInventoryWeightAsDecimal");}}
@@ -251,7 +253,7 @@ public class DemoBridge : IBridge {
         Calls.Add(cmd);object d=null;string n=J.S(body,"displayName");
         if(cmd=="status")d=J.Obj("pipe","connected");
         else if(cmd=="capabilities")d=J.Parse(Program.ReadEmbedded("capabilities.json"));
-        else if(cmd=="get_current_environment")d=J.Obj("GameSpaceDisplayName","던바튼","ChannelDisplayName","데모 채널","Weather","Sunny","WorldPosition",J.Obj("X",180.6,"Y",-222.7));
+        else if(cmd=="get_currentEnvironment")d=J.Obj("GameSpaceDisplayName","던바튼","ChannelDisplayName","데모 채널","Weather","Sunny","WorldPosition",J.Obj("X",180.6,"Y",-222.7));
         else if(cmd=="get_music_scores"||cmd=="get_instruments"||cmd=="change_instrument"||cmd=="play_music_score")return Music.Call(cmd,body);
         else if(cmd=="get_activity")d=J.Obj("Performance",Music.Performance(),"Dungeon",J.Obj("State",Dungeon),"combatState",J.Obj("IsInCombat",false),"Mode",J.Obj("MainButtonState",Fishing?"Fishing":"Interaction"),"autoPlay",J.Obj("IsAutoPlaying",false),"autoTravel",J.Obj("IsAutoTraveling",false));
         else if(cmd=="get_inventory")d=J.Obj("CurrentInventoryWeightAsDecimal",38.5,"MaxInventoryWeightAsDecimal",100);

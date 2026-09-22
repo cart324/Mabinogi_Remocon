@@ -18,9 +18,10 @@ public partial class MainForm : Form {
     Dictionary<string,DateTime> cooldown=new Dictionary<string,DateTime>();
     List<Goal> manualQueue=new List<Goal>();
     Label connectionLabel, placeLabel, activityLabel, weightLabel, wingsLabel, refreshLabel, planLabel, cliLabel;
-    Button startButton; CheckBox fishCheck, storageCheck;
+    Button startButton; CheckBox fishCheck, storageCheck, routeEditorCheck, useRoutesCheck;
     NumericUpDown fullNumber; ComboBox fishCombo;
     TabControl tabs=new TabControl(); DataGridView facilityGrid,goalGrid,recipeGrid,manualGrid,itemGrid,stockGrid;
+    TabPage routePage, jukeboxPage;
     Label activityWatchLabel, lastNotificationLabel;
     TextBox logBox, itemSearch; ComboBox itemLocation; NotifyIcon tray; Timer timer=new Timer();
     static readonly Color Ink=Color.FromArgb(28,45,50), Accent=Color.FromArgb(15,109,101), Canvas=Color.FromArgb(243,247,247);
@@ -40,12 +41,28 @@ public partial class MainForm : Form {
         FormClosing+=OnClosing;
     }
     Label Label(string text,int size){return new Label{Text=text,AutoSize=true,Font=new Font("맑은 고딕",size,size>=13?FontStyle.Bold:FontStyle.Regular),ForeColor=Ink,Margin=new Padding(6,6,6,4)};}
-    Button Button(string text,Action click,bool accent=false){var b=new Button{Text=text,AutoSize=true,Height=34,MinimumSize=new Size(90,32),FlatStyle=FlatStyle.Flat,BackColor=accent?Accent:Color.White,ForeColor=accent?Color.White:Ink,Margin=new Padding(4),Padding=new Padding(8,2,8,2)};b.FlatAppearance.BorderColor=Color.FromArgb(200,215,215);b.Click+=(s,e)=>click();return b;}
+    Button Button(string text,Action click,bool accent=false){var b=new Button{Text=text,AutoSize=true,Height=34,MinimumSize=new Size(90,32),FlatStyle=FlatStyle.Flat,BackColor=accent?Accent:Color.White,ForeColor=accent?Color.White:Ink,Margin=new Padding(4),Padding=new Padding(8,2,8,2)};b.FlatAppearance.BorderColor=Color.FromArgb(200,215,215);b.Click+=(s,e)=>click();return b; }
     FlowLayoutPanel Bar(){return new FlowLayoutPanel{Dock=DockStyle.Top,AutoSize=true,WrapContents=true,Padding=new Padding(4)};}
     ComboBox Combo(int width){var box=new ComboBox{DropDownStyle=ComboBoxStyle.DropDownList,Width=width,IntegralHeight=false,DropDownHeight=360,Margin=new Padding(4,6,4,4),FormattingEnabled=true};box.Format+=(s,e)=>{if(e.ListItem is string)e.Value=FriendlyText.DisplayName((string)e.ListItem);};return box;}
     NumericUpDown Number(decimal val,int max){return new NumericUpDown{Minimum=0,Maximum=max,Value=Math.Max(0,Math.Min(max,val)),Width=90,ThousandsSeparator=true,Margin=new Padding(4,6,4,4)};}
     DataGridView Grid(params string[] cols){var g=new DataGridView{Dock=DockStyle.Fill,ReadOnly=true,AllowUserToAddRows=false,AllowUserToDeleteRows=false,RowHeadersVisible=false,SelectionMode=DataGridViewSelectionMode.FullRowSelect,MultiSelect=false,AutoSizeColumnsMode=DataGridViewAutoSizeColumnsMode.Fill,BackgroundColor=Color.White,BorderStyle=BorderStyle.None,EnableHeadersVisualStyles=false,AutoSizeRowsMode=DataGridViewAutoSizeRowsMode.None};g.ColumnHeadersDefaultCellStyle.BackColor=Color.FromArgb(228,237,236);g.ColumnHeadersDefaultCellStyle.ForeColor=Ink;g.ColumnHeadersHeightSizeMode=DataGridViewColumnHeadersHeightSizeMode.DisableResizing;g.ColumnHeadersHeight=32;g.ColumnHeadersDefaultCellStyle.WrapMode=DataGridViewTriState.False;g.DefaultCellStyle.WrapMode=DataGridViewTriState.False;g.DefaultCellStyle.Padding=new Padding(4,2,4,2);g.RowTemplate.Height=30;g.DefaultCellStyle.SelectionBackColor=Color.FromArgb(215,237,231);g.DefaultCellStyle.SelectionForeColor=Ink;g.AlternatingRowsDefaultCellStyle.BackColor=Color.FromArgb(248,250,250);g.CellFormatting+=(s,e)=>{if(e.Value is string){e.Value=FriendlyText.DisplayName((string)e.Value);e.FormattingApplied=true;}};foreach(var c in cols){int index=g.Columns.Add(c,c);g.Columns[index].MinimumWidth=40;}return g;}
     TabPage Page(string title,string hint,Control content,FlowLayoutPanel bar){var p=new TabPage(title){BackColor=Canvas,Padding=new Padding(10)};p.Controls.Add(content);if(bar!=null)p.Controls.Add(bar);var l=new Label{Text=hint,Dock=DockStyle.Top,AutoSize=true,MaximumSize=new Size(1100,0),Padding=new Padding(4,4,4,6),ForeColor=Color.FromArgb(76,99,100)};p.Controls.Add(l);p.Resize+=(s,e)=>l.MaximumSize=new Size(Math.Max(100,p.ClientSize.Width-20),0);tabs.TabPages.Add(p);return p;}
+    void ApplyRouteTabVisibility(){
+        if(routePage==null)return;
+        if(cfg.EnableRouteEditor){
+            if(!tabs.TabPages.Contains(routePage)){
+                int targetIndex=-1;
+                if(jukeboxPage!=null&&tabs.TabPages.Contains(jukeboxPage))
+                    targetIndex=tabs.TabPages.IndexOf(jukeboxPage);
+                if(targetIndex>=0)tabs.TabPages.Insert(targetIndex,routePage);
+                else tabs.TabPages.Add(routePage);
+            }
+        }else{
+            if(tabs.TabPages.Contains(routePage)){
+                tabs.TabPages.Remove(routePage);
+            }
+        }
+    }
     void BuildUI(){
         var root=new TableLayoutPanel{Dock=DockStyle.Fill,ColumnCount=1,RowCount=5,Padding=new Padding(14)};
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));root.RowStyles.Add(new RowStyle(SizeType.Absolute,82));root.RowStyles.Add(new RowStyle(SizeType.Absolute,50));root.RowStyles.Add(new RowStyle(SizeType.Percent,100));root.RowStyles.Add(new RowStyle(SizeType.AutoSize));Controls.Add(root);
@@ -57,7 +74,7 @@ public partial class MainForm : Form {
         controls.Controls.Add(startButton);root.Controls.Add(controls,0,2);
         tabs.Multiline=true;tabs.Dock=DockStyle.Fill;tabs.Font=new Font("맑은 고딕",9.5F);contentHost=new Panel{Dock=DockStyle.Fill};contentHost.Controls.Add(tabs);root.Controls.Add(contentHost,0,3);
         var footer=Bar();footer.Dock=DockStyle.Top;planLabel=Label("자동화 OFF",9);refreshLabel=Label("",9);footer.Controls.Add(planLabel);footer.Controls.Add(refreshLabel);root.Controls.Add(footer,0,4);
-        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();SeparateUtilityPages();BuildUpdateBanner();
+        BuildFacilities();BuildGoals();BuildManual();BuildInventory();BuildFishing();BuildSettings();BuildUpdates();BuildRoutes();BuildJukebox();SeparateUtilityPages();ApplyRouteTabVisibility();BuildUpdateBanner();
     }
     Label Card(TableLayoutPanel host,int col,string title,string value){var p=new Panel{Dock=DockStyle.Fill,BackColor=Color.White,Margin=new Padding(3)};var top=new Label{Text=title,AutoSize=true,Location=new Point(10,6),ForeColor=Color.FromArgb(83,111,112)};var val=new Label{Text=value,Location=new Point(10,30),Size=new Size(340,30),Anchor=AnchorStyles.Top|AnchorStyles.Left|AnchorStyles.Right,Font=new Font("맑은 고딕",11.5F,FontStyle.Bold),TextAlign=ContentAlignment.TopLeft};p.Controls.Add(top);p.Controls.Add(val);host.Controls.Add(p,col,0);return val;}
     void BuildFacilities(){
@@ -72,7 +89,7 @@ public partial class MainForm : Form {
         goalGrid.Columns[1].HeaderCell.ToolTipText="클릭하여 목표 활성화 / 비활성화";
         goalGrid.CellClick+=(sender,e)=>{if(e.RowIndex<0||e.ColumnIndex!=1||!CanEdit())return;var goal=goalGrid.Rows[e.RowIndex].Tag as Goal;if(goal==null)return;goal.Enabled=!goal.Enabled;Save();RenderGoals();};
         bar.Controls.Add(Button("목표 추가",()=>EditGoal(null)));bar.Controls.Add(Button("선택 수정",()=>EditGoal(Selected<Goal>(goalGrid))));bar.Controls.Add(Button("선택 삭제",()=>{if(CanEdit()){var g=Selected<Goal>(goalGrid);if(g!=null){cfg.Goals.Remove(g);Save();RenderGoals();}}}));bar.Controls.Add(Button("우선순위 ↑",()=>MoveGoal(-1)));bar.Controls.Add(Button("우선순위 ↓",()=>MoveGoal(1)));
-        Page("자동 가공","목표 목록 위쪽부터 우선 처리되며, 완료품 보유량 또는 등록 횟수를 기준으로 가공합니다.",goalGrid,bar);
+        Page("자동 가공","목표 목록 위쪽부터 우선 처리되며, 완제품 보유량 또는 등록 횟수를 기준으로 가공합니다.",goalGrid,bar);
     }
     void BuildManual(){
         recipeGrid=Grid("가공법","상태","생산량","부족 재료 / 사유");manualGrid=Grid("시설","가공법","수량");
@@ -138,8 +155,14 @@ public partial class MainForm : Form {
         var row=Bar();row.Dock=DockStyle.None;row.Controls.Add(Label("가방 용량 한도 (%)",10));fullNumber=Number(cfg.FullPercent,100);fullNumber.Minimum=50;row.Controls.Add(fullNumber);opts.Controls.Add(row);
         AddDisplayScale(opts);
         storageCheck=new CheckBox{Text="목표 수량에 창고 재고 포함",Checked=cfg.CountStorage,AutoSize=true,Margin=new Padding(6,6,6,6)};opts.Controls.Add(storageCheck);
+        routeEditorCheck=new CheckBox{Text="채집 루트 편집기 활성화 (채집 루트 탭 표시)",Checked=cfg.EnableRouteEditor,AutoSize=true,Margin=new Padding(6,6,6,6)};
+        routeEditorCheck.CheckedChanged+=(s,e)=>{cfg.EnableRouteEditor=routeEditorCheck.Checked;Save();ApplyRouteTabVisibility();};
+        opts.Controls.Add(routeEditorCheck);
+        useRoutesCheck=new CheckBox{Text="채집 시 채집 루트 사용",Checked=cfg.UseGatherRoutes,AutoSize=true,Margin=new Padding(6,6,6,6)};
+        useRoutesCheck.CheckedChanged+=(s,e)=>{cfg.UseGatherRoutes=useRoutesCheck.Checked;Save();};
+        opts.Controls.Add(useRoutesCheck);
         var buttons=Bar();buttons.Dock=DockStyle.None;
-        buttons.Controls.Add(Button("설정 적용",()=>{if(!CanEdit())return;cfg.FullPercent=(int)fullNumber.Value;cfg.CountStorage=storageCheck.Checked;Save();RenderGoals();Log("설정 저장 완료");}));
+        buttons.Controls.Add(Button("설정 적용",()=>{if(!CanEdit())return;cfg.FullPercent=(int)fullNumber.Value;cfg.CountStorage=storageCheck.Checked;cfg.EnableRouteEditor=routeEditorCheck.Checked;cfg.UseGatherRoutes=useRoutesCheck.Checked;Save();ApplyRouteTabVisibility();RenderGoals();Log("설정 저장 완료");}));
         buttons.Controls.Add(Button("시설별 슬롯 설정",()=>EditFacilitySlots(null)));buttons.Controls.Add(Button("게임 CLI 선택",ChooseCli));buttons.Controls.Add(Button("설정 폴더 열기",()=>{Directory.CreateDirectory(Storage.Root);ProcessFolder(Storage.Root);}));opts.Controls.Add(buttons);
         cliLabel=new Label{Text="CLI 경로: "+cfg.CliPath,AutoSize=true,Margin=new Padding(6,4,6,8)};opts.Controls.Add(cliLabel);
         AddActivitySettings(opts);

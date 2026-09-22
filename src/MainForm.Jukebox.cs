@@ -33,7 +33,7 @@ public partial class MainForm {
         playlistRepeat=new CheckBox{Text="목록 반복",Checked=cfg.PlaylistRepeat,AutoSize=true,Margin=new Padding(8,10,8,6)};playlistRepeat.CheckedChanged+=(s,e)=>{cfg.PlaylistRepeat=playlistRepeat.Checked;Save();};bar.Controls.Add(playlistRepeat);bar.SetFlowBreak(playlistRepeat,true);
         musicStatus=Label("재생 대기",9);musicStatus.MaximumSize=new Size(950,0);musicStatus.Margin=new Padding(4,4,12,4);bar.Controls.Add(musicStatus);
         musicLibraryStatus=Label("게임 연결 후 악보 및 악기 목록을 불러옵니다.",9);musicLibraryStatus.MaximumSize=new Size(950,0);musicLibraryStatus.Margin=new Padding(4);bar.Controls.Add(musicLibraryStatus);
-        Page("주크박스","목록에 악보를 추가하고 악기를 지정하여 순서대로 자동 연주합니다.",layout,bar);
+        jukeboxPage=Page("주크박스","목록에 악보를 추가하고 악기를 지정하여 순서대로 자동 연주합니다.",layout,bar);
         RenderPlaylist();
     }
     async Task RefreshMusic(bool force){

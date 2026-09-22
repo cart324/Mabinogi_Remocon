@@ -92,7 +92,18 @@ public partial class MainForm {
         var works=await bridge.Call("get_altering_works",null);works.Check();fresh.Works=J.Rows(J.Get(J.Unwrap(works.Data),"works"));
         if(closing||generation!=stamp||!active())return null;
         if(Planner.ShouldInterruptForCollection(fresh,cfg))return "가공 완료 및 재등록 재료 확보 · 채집을 중단하고 수령합니다.";
-        await ObserveGatherActivity(stamp,active);return null;
+        await ObserveGatherActivity(stamp,active);
+        if(cfg.UseGatherRoutes){
+            var route=RouteSharing.Resolve(cfg,plan.Name);
+            if(route!=null&&snap.Environment!=null){
+                var pos=J.Get(snap.Environment,"WorldPosition");
+                var outside=RouteSharing.IsOutside(route,J.S(snap.Environment,"GameSpaceDisplayName"),J.N(pos,"X"),J.N(pos,"Y"));
+                if(outside.HasValue&&outside.Value){
+                    return "채집 루트 이탈 감지 ("+route.Name+") · 채집을 중단합니다.";
+                }
+            }
+        }
+        return null;
     }
     async Task StopGatherForCollection(Task pending,int stamp){
         stopping=true;

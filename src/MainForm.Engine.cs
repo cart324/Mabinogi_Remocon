@@ -10,7 +10,7 @@ using System.Windows.Forms;
 namespace MabiRemote {
 public partial class MainForm {
     string fishingItem=""; int fishingTarget; bool stopping; string lastWarning="";
-    void LoadEmbeddedCatalog(){var cat=J.Parse(Program.ReadEmbedded("capabilities.json"));SetCatalog(cat);}
+    void LoadEmbeddedCatalog(){var cat=J.Parse(Program.ReadEmbedded("capabilities.json"));SetCatalog(cat); }
     void SetCatalog(object cat){commands.Clear();foreach(var c in J.Rows(J.Get(cat,"commands"))){string key=J.S(c,"Command");if(key!="")commands[key]=c;}}
     async Task<object> Read(string command){if(!commands.ContainsKey(command)&&command!="status"&&command!="capabilities")throw new Exception("지원하지 않는 게임 명령: "+command);var r=await bridge.Call(command,null);if(closing)throw new OperationCanceledException();r.Check();return J.Unwrap(r.Data);}
     async Task RefreshSnapshot(bool catalogs, bool afterAction=false){
@@ -19,7 +19,7 @@ public partial class MainForm {
         if(catalogs||snap.Recipes.Count==0||DateTime.UtcNow-catalogAt>TimeSpan.FromSeconds(60)){
             fresh.Recipes=J.Rows(J.Get(await Read("get_alterable_items"),"items"));
             if(!afterAction||snap.Gatherables.Count==0||DateTime.UtcNow-catalogAt>TimeSpan.FromSeconds(60)){fresh.Gatherables=J.Rows(J.Get(await Read("get_gatherable_items"),"items"));catalogAt=DateTime.UtcNow;}else fresh.Gatherables=snap.Gatherables;
-        }else{fresh.Recipes=snap.Recipes;fresh.Gatherables=snap.Gatherables;}
+        }else{fresh.Recipes=snap.Recipes;fresh.Gatherables=snap.Gatherables; fresh.Recipes=snap.Recipes;}
         fresh.At=DateTime.UtcNow;snap=fresh;CheckBlackLumps(fresh.Items);CheckBagWeight(fresh);
         await RefreshMusic(catalogs&&!afterAction);
         string selection=cfg.FishName;if(!auto&&!ownsFishing)Fill(fishCombo,snap.Gatherables.Select(x=>J.S(x,"DisplayName")).Where(FishNames.IsFish).Distinct(),selection);
@@ -85,7 +85,15 @@ public partial class MainForm {
         if(!commands.ContainsKey(p.Command)){Log("지원하지 않는 명령: "+p.Command);Pause("게임에서 지원하지 않는 작업입니다.");return false;}
         if(p.Command=="execute_altering"&&Facilities.Free(snap,cfg,Facilities.ForRecipe(cfg,p.Name))<=0){Notice("시설 빈 슬롯이 없습니다.");return false;}
         actionOwned=true;actionText=p.Reason+" · "+p.Name;planLabel.Text=actionText;Log(actionText);UpdateLiveLabels();
-        if(p.Command=="execute_gathering")SetGatherStatus("채집 진행 중 · "+p.Name);
+        if(p.Command=="execute_gathering"){
+            var route=cfg.UseGatherRoutes?RouteSharing.Resolve(cfg,p.Name):null;
+            if(route!=null){
+                SetGatherStatus("채집 진행 중 · "+p.Name+" ("+route.Name+")");
+                Log("채집 루트 적용: "+route.Name+" ("+p.Name+")");
+            }else{
+                SetGatherStatus("채집 진행 중 · "+p.Name);
+            }
+        }
         bool okay=false;var commandClock=System.Diagnostics.Stopwatch.StartNew();
         try{
             var pending=bridge.Call(p.Command,J.Obj("displayName",p.Name));bool collectionInterrupt=false;
@@ -101,7 +109,7 @@ public partial class MainForm {
             await RefreshSnapshot(true,true);
             if(p.Command=="execute_gathering"){
                 bool idleFish=p.Reason=="빈 시간 자동 낚시";
-                if(snap.Fishing){ownsFishing=true;fishingItem=p.Name;var target=cfg.Stocks.FirstOrDefault(x=>x.Name==p.Name&&x.Gather);fishingTarget=idleFish?0:p.GatherTarget>0?p.GatherTarget:target!=null?target.Target:snap.Count(p.Name,cfg.CountStorage)+100;Log("자동 낚시 시작: "+p.Name);if(stopRequested||generation!=stamp||!auto||(idleFish&&!fishEnabled))await StopFishOnly();}
+                if(snap.Fishing){ownsFishing=true;fishingItem=p.Name;var target=cfg.Stocks.FirstOrDefault(x=>x.Name==p.Name&&x.Gather);fishingTarget=idleFish?0:p.GatherTarget>0?p.GatherTarget:target!=null?target.Target:snap.Count(p.Name,cfg.CountStorage)+100;Log("자동 낚시 시작: "+p.Name);if(stopRequested||generation!=stamp||!auto||(idleFish&&!fishEnabled))await StopFishOnly(); }
                 else if(idleFish){fishEnabled=false;fishCheck.Checked=false;Pause("자동 낚시를 시작하지 못했습니다. 어종을 다시 확인하세요.");Notify("낚시 확인 필요","선택 어종: "+p.Name);}
             }
             if(snap.Full(cfg.FullPercent)){Pause("가방 한도 도달");if(ownsFishing)await StopFishOnly();Notify("가방 정리 필요","가방 용량이 한도에 도달했습니다. 가방을 비운 후 다시 시작하세요.");}
