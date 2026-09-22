@@ -108,21 +108,23 @@ public partial class MainForm : Form {
         activityDiagnosticButton=Button("활동 기록 시작",ToggleActivityDiagnostic);testBar.Controls.Add(activityDiagnosticButton);
         testBar.Controls.Add(Button("기록 폴더 열기",()=>{Directory.CreateDirectory(Storage.Root);ProcessFolder(Storage.Root);}));opts.Controls.Add(testBar);
         activityWatchLabel=Label("활동 감시: 대기 중",9);activityWatchLabel.MaximumSize=new Size(850,0);opts.Controls.Add(activityWatchLabel);
-        lastNotificationLabel=Label("최근 알림: 없음",9);lastNotificationLabel.MaximumSize=new Size(850,0);opts.Controls.Add(lastNotificationLabel);
+        lastNotificationLabel=Label("최근 알림: 없음",9);lastNotificationLabel.MaximumSize=new Size(850,0);lastNotificationLabel.Margin=new Padding(6,4,6,8);opts.Controls.Add(lastNotificationLabel);
+        opts.Controls.Add(new Panel{Height=40,Width=200,Margin=new Padding(0)});
     }
     void BuildSettings(){
         var layout=new TableLayoutPanel{Dock=DockStyle.Fill,RowCount=2,ColumnCount=1};
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent,75));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent,25));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent,80));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent,20));
         var opts=new FlowLayoutPanel{
             Dock=DockStyle.Fill,
             AutoScroll=true,
             FlowDirection=FlowDirection.TopDown,
             WrapContents=false,
-            Padding=new Padding(16,12,16,16),
+            Padding=new Padding(16,12,16,24),
             BackColor=Color.White,
             BorderStyle=BorderStyle.FixedSingle,
-            Margin=new Padding(2,2,2,6)
+            Margin=new Padding(2,2,2,6),
+            AutoScrollMargin=new Size(0,30)
         };
         var scrollHint=new Label{
             Text="설정 목록 (마우스 휠이나 우측 스크롤바로 내려 알림 설정 확인 ↕)",
